@@ -2,7 +2,7 @@
 
 import { isAdminRequest } from './middleware/auth';
 import { trackPageView, getPVStats } from './middleware/pv';
-import { loadAllMatches, findMatchByNo, loadApiUsage, upsertMatch, type MatchRecord } from './services/db';
+import { loadAllMatches, findMatchByNo, loadApiUsage, upsertMatch, type MatchRecord, loadAiReports } from './services/db';
 import { runApiFootballUpdate } from './services/apifootball';
 import { getAiReport } from './services/ai';
 import { importSchedule } from './services/excel';
@@ -76,6 +76,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
     // GET /api/schedule
     if (method === 'GET' && path === '/api/schedule') {
       const matches = await loadAllMatches(env);
+      const reportsDb = await loadAiReports(env);
       const sorted = [...matches].sort((a, b) => {
         if (a.date_key !== b.date_key) return a.date_key.localeCompare(b.date_key);
         const [ak] = matchNoSortKey(a.match_no_normalized);
@@ -125,6 +126,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
           manualFullTimeScore: m.manual_full_time_score,
           apiHalfTimeScore: m.api_half_time_score,
           apiFullTimeScore: m.api_full_time_score,
+          hasAiReport: !!reportsDb[m.match_no_normalized],
         });
       }
 

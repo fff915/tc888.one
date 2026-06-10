@@ -1479,6 +1479,7 @@ async function loadSchedule({ notify = false } = {}) {
     buildDateStrip();
     renderSchedule({ animate: false });
     setTimeout(playEntrance, 100);
+    setTimeout(prefetchAiReports, 200);
 
     if (notify) {
       const summary = payload.lastImport?.message || "数据已更新";
@@ -1819,6 +1820,26 @@ document.addEventListener("keydown", (e) => {
 
 // ---- AI 分析弹窗 ----
 const aiReportCache = new Map();
+const AI_CACHE_STORAGE_KEY = 'qtc_ai_reports_v1';
+
+(function restoreAiCache() {
+  try {
+    const raw = sessionStorage.getItem(AI_CACHE_STORAGE_KEY);
+    if (raw) {
+      const entries = JSON.parse(raw);
+      for (const [k, v] of Object.entries(entries)) {
+        aiReportCache.set(k, v);
+      }
+    }
+  } catch {}
+})();
+
+function persistAiCache() {
+  try {
+    const obj = Object.fromEntries(aiReportCache);
+    sessionStorage.setItem(AI_CACHE_STORAGE_KEY, JSON.stringify(obj));
+  } catch {}
+}
 function findMatchByNo(matchNo) {
   for (const day of scheduleDays) {
     const found = (day.matches || []).find((m) => m.matchNo === matchNo);
@@ -1944,6 +1965,25 @@ function populateAiReportSection(section, content) {
   section.innerHTML = renderAiReportContent(content);
 }
 
+function prefetchAiReports() {
+  // Background prefetch all AI reports so they're instant on click
+  for (const day of scheduleDays) {
+    for (const match of (day.matches || [])) {
+      if (match.hasAiReport && !aiReportCache.has(match.matchNo)) {
+        fetch(`/api/ai-report?matchNo=${encodeURIComponent(match.matchNo)}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.ok && data.reports) {
+              aiReportCache.set(match.matchNo, data.reports);
+              persistAiCache();
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }
+}
+
 function loadAiReport(matchNo, modal) {
   const dsSection = modal.querySelector(".ai-section-deepseek");
   const dbSection = modal.querySelector(".ai-section-doubao");
@@ -1975,6 +2015,7 @@ function loadAiReport(matchNo, modal) {
       }
       const reports = data.reports || {};
       aiReportCache.set(matchNo, reports);
+      persistAiCache();
       populateAiReportSection(dsSection, reports.deepseek?.content);
       populateAiReportSection(dbSection, reports.doubao?.content);
     })
@@ -1996,6 +2037,7 @@ function pollAiReport(matchNo, modal, attempt) {
         }
         const reports = data.reports || {};
         aiReportCache.set(matchNo, reports);
+        persistAiCache();
         populateAiReportSection(dsSection, reports.deepseek?.content);
         populateAiReportSection(dbSection, reports.doubao?.content);
       })
