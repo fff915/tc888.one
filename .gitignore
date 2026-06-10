@@ -1,0 +1,6 @@
+.env
+highlightly.env
+__pycache__/
+*.pyc
+data/highlightly_api.log
+data/team-logo-cache/

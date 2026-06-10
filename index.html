@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="x5-orientation" content="portrait" />
+    <meta name="x5-fullscreen" content="true" />
+    <meta name="x5-page-mode" content="app" />
+    <title>qtc</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body ontouchstart="">
+    <main id="main-content" class="app-shell">
+      <div class="top-spacer" aria-hidden="true"></div>
+
+      <div id="dateTopBar" class="date-top-bar" aria-label="比赛日期和菜单">
+        <div class="date-strip-wrap">
+          <div id="dateStrip" class="date-strip" aria-label="比赛日期"></div>
+        </div>
+        <button id="menuButton" class="hamburger-chip" type="button" aria-label="菜单">
+          <div class="hamburger-bars">
+            <span></span>
+            <span></span>
+          </div>
+        </button>
+      </div>
+
+      <div class="match-list-wrap">
+        <section id="schedule-content" class="schedule" aria-live="polite"></section>
+      </div>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite">数据已更新</div>
+
+    <div id="menuPopup" class="menu-dropdown" aria-hidden="true">
+      <button class="menu-item" type="button" data-action="item1">
+        <span>1</span>
+      </button>
+      <button class="menu-item" type="button" data-action="item2">
+        <span>2</span>
+      </button>
+      <button class="menu-item" type="button" data-action="item3">
+        <span>3</span>
+      </button>
+      <button class="menu-item" type="button" data-action="item4">
+        <span>4</span>
+      </button>
+      <button class="menu-item" type="button" data-action="item5">
+        <span>5（暂定）</span>
+      </button>
+    </div>
+
+    <div id="qrModal" class="qr-modal" aria-hidden="true">
+      <button class="qr-modal-backdrop" type="button" aria-label="关闭聊天二维码"></button>
+      <div class="qr-modal-panel" role="dialog" aria-modal="true" aria-label="聊天二维码">
+        <img id="qrModalImage" alt="聊天二维码" />
+        <div class="qr-contact-row" aria-label="联系电话">
+          <span class="qr-contact-phone">15656531239</span>
+          <button id="qrCopyButton" class="qr-copy-button" type="button" data-copy-text="15656531239">复制</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Observer.min.js"></script>
+    <script src="/script.js"></script>
+  </body>
+</html>
