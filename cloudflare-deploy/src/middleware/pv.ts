@@ -2,27 +2,33 @@
 
 import { Env } from '../index';
 
+// Only count these pages as real user visits
+const PAGE_PATHS = new Set(['/', '/index.html', '/admin', '/admin/']);
+
+// Common bot/crawler User-Agent patterns
+const BOT_UA = /bot|crawler|spider|scanner|scan|wget|curl|python|go-http|java|libwww|perl|ruby|php|wordpress|scanning/i;
+
 export async function trackPageView(request: Request, env: Env): Promise<void> {
   try {
     const url = new URL(request.url);
     const path = url.pathname;
     
-    // Only track actual page views, not API calls or static asset requests
-    if (path.startsWith('/api/') || path.startsWith('/daily-image/') || path.startsWith('/admin/')) {
+    // Only track actual page visits
+    if (!PAGE_PATHS.has(path)) {
       return;
     }
+
+    const userAgent = request.headers.get('User-Agent') || '';
     
-    // Exclude static file extensions
-    const staticExts = /\.(css|js|ico|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot|map|txt|xml|json|pdf)$/i;
-    if (staticExts.test(path)) {
+    // Exclude bots and scanners
+    if (BOT_UA.test(userAgent)) {
       return;
     }
 
     const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || '';
-    const userAgent = request.headers.get('User-Agent') || '';
     const referer = request.headers.get('Referer') || '';
     
-    // Simple hash for visitor identification
+    // Hash for visitor identification (IP + UA)
     const visitorRaw = `${ip}:${userAgent}`;
     let hash = 0;
     for (let i = 0; i < visitorRaw.length; i++) {
@@ -40,6 +46,8 @@ export async function trackPageView(request: Request, env: Env): Promise<void> {
   }
 }
 
+const PAGE_FILTER = "AND path IN ('/', '/index.html', '/admin', '/admin/')";
+
 export async function getPVStats(env: Env): Promise<{
   todayPV: number;
   yesterdayPV: number;
@@ -55,13 +63,13 @@ export async function getPVStats(env: Env): Promise<{
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 
   const [todayResult, yesterdayResult, totalResult, todayVisitors, totalVisitors, last7DaysRes, last30DaysRes] = await Promise.all([
-    env.DB.prepare('SELECT COUNT(*) as count FROM page_views WHERE created_at >= ?').bind(today).first<{ count: number }>(),
-    env.DB.prepare('SELECT COUNT(*) as count FROM page_views WHERE created_at >= ? AND created_at < ?').bind(yesterday, today).first<{ count: number }>(),
-    env.DB.prepare('SELECT COUNT(*) as count FROM page_views').first<{ count: number }>(),
-    env.DB.prepare('SELECT COUNT(DISTINCT visitor_hash) as count FROM page_views WHERE created_at >= ?').bind(today).first<{ count: number }>(),
-    env.DB.prepare('SELECT COUNT(DISTINCT visitor_hash) as count FROM page_views').first<{ count: number }>(),
-    env.DB.prepare("SELECT DATE(created_at) as date, COUNT(*) as pv FROM page_views WHERE created_at >= ? GROUP BY DATE(created_at) ORDER BY date").bind(sevenDaysAgo).all<{ date: string; pv: number }>(),
-    env.DB.prepare("SELECT DATE(created_at) as date, COUNT(*) as pv FROM page_views WHERE created_at >= ? GROUP BY DATE(created_at) ORDER BY date").bind(thirtyDaysAgo).all<{ date: string; pv: number }>(),
+    env.DB.prepare(`SELECT COUNT(*) as count FROM page_views WHERE created_at >= ? ${PAGE_FILTER}`).bind(today).first<{ count: number }>(),
+    env.DB.prepare(`SELECT COUNT(*) as count FROM page_views WHERE created_at >= ? AND created_at < ? ${PAGE_FILTER}`).bind(yesterday, today).first<{ count: number }>(),
+    env.DB.prepare(`SELECT COUNT(*) as count FROM page_views WHERE 1=1 ${PAGE_FILTER}`).first<{ count: number }>(),
+    env.DB.prepare(`SELECT COUNT(DISTINCT visitor_hash) as count FROM page_views WHERE created_at >= ? ${PAGE_FILTER}`).bind(today).first<{ count: number }>(),
+    env.DB.prepare(`SELECT COUNT(DISTINCT visitor_hash) as count FROM page_views WHERE 1=1 ${PAGE_FILTER}`).first<{ count: number }>(),
+    env.DB.prepare(`SELECT DATE(created_at) as date, COUNT(DISTINCT visitor_hash) as pv FROM page_views WHERE created_at >= ? ${PAGE_FILTER} GROUP BY DATE(created_at) ORDER BY date`).bind(sevenDaysAgo).all<{ date: string; pv: number }>(),
+    env.DB.prepare(`SELECT DATE(created_at) as date, COUNT(DISTINCT visitor_hash) as pv FROM page_views WHERE created_at >= ? ${PAGE_FILTER} GROUP BY DATE(created_at) ORDER BY date`).bind(thirtyDaysAgo).all<{ date: string; pv: number }>(),
   ]);
 
   return {

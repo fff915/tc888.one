@@ -43,8 +43,6 @@ loginBtn.addEventListener('click', async () => {
     loginError.textContent = '请输入 Token';
     return;
   }
-
-  // Validate token by calling an admin endpoint
   try {
     const res = await fetch('/admin/import-history', {
       headers: { 'Authorization': `Bearer ${token}` },
@@ -101,15 +99,15 @@ async function loadPVStats() {
     document.getElementById('statTodayVisitors').textContent = s.todayVisitors.toLocaleString();
     document.getElementById('statTotalVisitors').textContent = s.totalVisitors.toLocaleString();
 
-    // Charts
-    renderChart('chart7Days', chart7, s.last7Days, (c) => { chart7 = c; });
-    renderChart('chart30Days', chart30, s.last30Days, (c) => { chart30 = c; });
+    // Charts — show unique visitors per day
+    renderChart('chart7Days', chart7, s.last7Days, '去重访客', (c) => { chart7 = c; });
+    renderChart('chart30Days', chart30, s.last30Days, '去重访客', (c) => { chart30 = c; });
   } catch (e) {
     console.error('Failed to load PV stats:', e);
   }
 }
 
-function renderChart(canvasId, existingChart, data, setRef) {
+function renderChart(canvasId, existingChart, data, label, setRef) {
   const ctx = document.getElementById(canvasId);
   if (!ctx) return;
   if (existingChart) existingChart.destroy();
@@ -122,7 +120,7 @@ function renderChart(canvasId, existingChart, data, setRef) {
     data: {
       labels,
       datasets: [{
-        label: 'PV',
+        label,
         data: values,
         backgroundColor: 'rgba(10, 132, 255, 0.5)',
         borderColor: '#0a84ff',
