@@ -31,11 +31,12 @@ export const FLAG_CDN_BASE = 'https://jsd.onmicrosoft.cn/npm/svg-country-flags@1
 
 export const BADGES = ['🔴', '🔵', '🟢', '🟡', '🟠', '🟣', '⚪', '⚫'];
 
+// JavaScript Date.getDay(): 0=周日, 1=周一, 2=周二, 3=周三, 4=周四, 5=周五, 6=周六
 export const WEEKDAY_INDEX: Record<string, number> = {
-  '周一': 0, '周二': 1, '周三': 2, '周四': 3, '周五': 4, '周六': 5, '周日': 6, '周天': 6,
+  '周一': 1, '周二': 2, '周三': 3, '周四': 4, '周五': 5, '周六': 6, '周日': 0, '周天': 0,
 };
 
-export const WEEK_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+export const WEEK_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 export const HEADER_ALIASES: Record<string, string[]> = {
   match_no: ['竞彩编号', '编号', '赛事编号', '场次编号', '竞彩', 'match_no', 'matchno', 'id'],
