@@ -378,17 +378,6 @@ function matchStatusHtml(match) {
 }
 
 function compactKickoffDateTime(match, day) {
-  if (match.kickoff) {
-    const kickoff = new Date(match.kickoff);
-    if (!Number.isNaN(kickoff.getTime())) {
-      const month = kickoff.getMonth() + 1;
-      const date = kickoff.getDate();
-      const hour = String(kickoff.getHours()).padStart(2, "0");
-      const minute = String(kickoff.getMinutes()).padStart(2, "0");
-      return `${month}-${date} ${hour}:${minute}`;
-    }
-  }
-
   return `${day.dateLabel.replace("月", "-").replace("日", "")} ${match.time}`;
 }
 
@@ -1859,9 +1848,11 @@ function aiCurrentHtml(match) {
   const fullScore = match.fullScore || "";
   const halfScore = match.halfScore || match.apiHalfTimeScore || "";
   const league = match.league || "";
-  const kickoff = match.kickoff
-    ? new Date(match.kickoff).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
-    : "";
+  const kickoff = match.dateLabel && match.time
+    ? `${match.dateLabel.replace("月", "-").replace("日", "")} ${match.time}`
+    : match.kickoff
+      ? new Date(match.kickoff).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
+      : "";
 
   return `
     <div class="ai-modal-match">
