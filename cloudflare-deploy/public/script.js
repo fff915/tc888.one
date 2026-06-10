@@ -1585,36 +1585,13 @@ function resetSwipeVisuals() {
 }
 
 function enableSchedulePagerSwipe() {
-  let startX = 0, startY = 0;
-  let swiping = false;
-
-  document.addEventListener("touchstart", (e) => {
-    if (e.touches.length !== 1) return;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    swiping = false;
-  }, { passive: true });
-
-  document.addEventListener("touchmove", (e) => {
-    if (swiping) return;
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-
-    // Only trigger horizontal swipe when movement is clearly horizontal
-    if (absDx > 45 && absDx > absDy * 1.5) {
-      swiping = true;
-      if (dx < 0) {
-        goDate(dateIndex(selectedDateKey) + 1);
-      } else {
-        goDate(dateIndex(selectedDateKey) - 1);
-      }
-    }
-  }, { passive: true });
-
-  document.addEventListener("touchend", () => {
-    swiping = false;
+  Observer.create({
+    target: window,
+    type: "touch,pointer",
+    onLeft: () => goDate(dateIndex(selectedDateKey) + 1),
+    onRight: () => goDate(dateIndex(selectedDateKey) - 1),
+    dragMinimum: 45,
+    preventDefault: false,
   });
 }
 
