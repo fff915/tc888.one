@@ -100,7 +100,7 @@ button {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0;
-  scroll-snap-type: x proximity;
+  scroll-snap-type: none;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
@@ -143,8 +143,6 @@ button {
   border-radius: 20px;
   background: transparent;
   border: 0;
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
   touch-action: pan-x;
   transition: all 0.25s;
 }
