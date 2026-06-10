@@ -30,7 +30,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Track page views for non-API static page requests
+    // Track page views for non-API requests
     if (request.method === 'GET' && !path.startsWith('/api/') && !path.startsWith('/daily-image/')) {
       ctx.waitUntil(trackPageView(request, env));
     }
@@ -48,18 +48,21 @@ export default {
       return serveDailyImage(request, env);
     }
 
-    // --- Admin Page ---
-    if (path === '/admin' || path === '/admin/') {
-      return env.ASSETS.fetch(new Request(url.origin + '/admin.html', request));
-    }
-
-    // --- Admin API Routes ---
-    if (path.startsWith('/admin/')) {
-      return handleAdminApi(request, env, ctx);
+    // --- Admin Routes ---
+    if (path === '/admin' || path.startsWith('/admin/')) {
+      // If it's an API call (has Bearer token), route to admin API
+      const auth = request.headers.get('Authorization') || '';
+      if (auth.startsWith('Bearer ')) {
+        return handleAdminApi(request, env, ctx);
+      }
+      // Otherwise serve admin.html as static asset
+      return env.ASSETS.fetch('https://asset/admin.html');
     }
 
     // --- Static Assets ---
-    return serveStaticAsset(request, env);
+    // Serve index.html for root
+    const assetPath = path === '/' || path === '' ? '/index.html' : path;
+    return env.ASSETS.fetch(new URL(assetPath, 'https://asset'));
   },
 };
 
@@ -324,19 +327,6 @@ async function handleAdminApi(request: Request, env: Env, ctx: ExecutionContext)
 }
 
 // --- File serving ---
-
-async function serveStaticAsset(request: Request, env: Env): Promise<Response> {
-  try {
-    const url = new URL(request.url);
-    let pathname = url.pathname;
-    if (pathname === '/' || pathname === '') pathname = '/index.html';
-
-    // Use Workers Assets to serve static files
-    return env.ASSETS.fetch(new Request(url.origin + pathname, request));
-  } catch {
-    return new Response('Not Found', { status: 404 });
-  }
-}
 
 function getContentType(filename: string): string {
   if (filename.endsWith('.html')) return 'text/html; charset=utf-8';
