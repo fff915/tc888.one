@@ -11,13 +11,7 @@ const qrCopyButton = document.getElementById("qrCopyButton");
 let scheduleDays = [];
 let selectedDateKey = "";
 let toastTimer;
-let dateStripSuppressClick = false;
-let dateStripScrollTimer = 0;
-let dateStripProgrammaticTimer = 0;
-let isDateStripProgrammatic = false;
 let isScheduleTransitioning = false;
-let pageSwipeObserver = null;
-let dateStripDragEndedAt = 0;
 let entrancePlayed = false;
 let clickBlockUntil = 0;
 const imageCache = new Map();
@@ -241,37 +235,11 @@ function centerDateChip(dateKey, { behavior = "smooth" } = {}) {
   if (!chip) return;
 
   const targetLeft = Math.max(0, chip.offsetLeft - (dateStrip.clientWidth - chip.offsetWidth) / 2);
-  isDateStripProgrammatic = true;
-  clearTimeout(dateStripProgrammaticTimer);
   if (behavior === "auto") {
     dateStrip.scrollLeft = targetLeft;
   } else {
     smoothCenterTo(dateStrip, targetLeft, 400);
   }
-  dateStripProgrammaticTimer = window.setTimeout(() => {
-    isDateStripProgrammatic = false;
-  }, behavior === "smooth" ? 420 : 40);
-}
-
-function closestCenteredDateKey() {
-  const chips = Array.from(dateStrip.querySelectorAll(".date-chip"));
-  if (!chips.length) return selectedDateKey;
-
-  const stripRect = dateStrip.getBoundingClientRect();
-  const centerX = stripRect.left + stripRect.width / 2;
-  let closest = chips[0];
-  let closestDistance = Infinity;
-
-  chips.forEach((chip) => {
-    const rect = chip.getBoundingClientRect();
-    const distance = Math.abs(rect.left + rect.width / 2 - centerX);
-    if (distance < closestDistance) {
-      closest = chip;
-      closestDistance = distance;
-    }
-  });
-
-  return closest.dataset.date || selectedDateKey;
 }
 
 function setDateChipActive(dateKey) {
@@ -1340,7 +1308,6 @@ function goDate(idx) {
   window.setTimeout(() => {
     if (isScheduleTransitioning) {
       isScheduleTransitioning = false;
-      resetSwipeVisuals();
     }
   }, 1800);
 
@@ -1365,7 +1332,6 @@ function goDate(idx) {
       gsap.timeline({
         onComplete() {
           isScheduleTransitioning = false;
-          resetSwipeVisuals();
         },
       }).to(newCards, {
         xPercent: 0,
@@ -1497,81 +1463,6 @@ function bindDateChipClicks() {
   });
 }
 
-function enableDateStripDrag() {
-  const obs = {
-    active: false,
-    startX: 0,
-  };
-
-  dateStrip.addEventListener("pointerdown", (event) => {
-    if (event.button !== undefined && event.button !== 0) return;
-    obs.active = true;
-    obs.startX = event.clientX;
-    obs.hasMoved = false;
-    dateStrip.classList.add("dragging");
-    pageSwipeObserver?.disable();
-  });
-
-  dateStrip.addEventListener("pointermove", (event) => {
-    if (!obs.active) return;
-    const dx = event.clientX - obs.startX;
-    if (!obs.hasMoved && Math.abs(dx) > 3) {
-      obs.hasMoved = true;
-      try { dateStrip.setPointerCapture?.(event.pointerId); } catch (e) {}
-    }
-    if (!obs.hasMoved) return;
-    dateStrip.scrollLeft -= event.movementX;
-  });
-
-  function endObserver(event) {
-    if (!obs.active) return;
-    obs.active = false;
-    dateStrip.classList.remove("dragging");
-    try { dateStrip.releasePointerCapture?.(event.pointerId); } catch (e) {}
-
-    // Mark drag end time to suppress snapDateStripToCenter cooldown
-    dateStripDragEndedAt = Date.now();
-    // Re-enable page swipe observer after a brief cooldown
-    setTimeout(() => { pageSwipeObserver?.enable(); }, 300);
-
-    if (!obs.hasMoved) return;
-
-    const dx = event.clientX - obs.startX;
-    if (Math.abs(dx) < 45) return;
-
-    const dates = dateItems();
-    const curIdx = dateIndex(selectedDateKey);
-    const dir = dx > 0 ? -1 : 1;
-    const targetIdx = curIdx + dir;
-    if (targetIdx < 0 || targetIdx >= dates.length) return;
-
-    dateStripSuppressClick = true;
-    selectDate(dates[targetIdx].dateKey, { animate: true, center: true, scrollTop: true });
-    window.setTimeout(() => { dateStripSuppressClick = false; }, 250);
-  }
-
-  dateStrip.addEventListener("pointerup", endObserver);
-  dateStrip.addEventListener("pointercancel", endObserver);
-  dateStrip.addEventListener(
-    "scroll",
-    () => {
-      if (isDateStripProgrammatic || obs.active) return;
-      clearTimeout(dateStripScrollTimer);
-      dateStripScrollTimer = window.setTimeout(snapDateStripToCenter, 110);
-    },
-    { passive: true },
-  );
-}
-
-function snapDateStripToCenter() {
-  if (isScheduleTransitioning) return;
-  // Suppress snap during cooldown after a drag ends (prevent bounce-back jitter)
-  if (Date.now() - dateStripDragEndedAt < 400) return;
-  const centeredDateKey = closestCenteredDateKey();
-  if (!centeredDateKey) return;
-  selectDate(centeredDateKey, { animate: centeredDateKey !== selectedDateKey, center: true, scrollTop: true });
-}
-
 document.addEventListener(
   "click",
   (event) => {
@@ -1586,16 +1477,8 @@ document.addEventListener(
   true,
 );
 
-function resetSwipeVisuals() {
-  scheduleContent.classList.remove("is-swiping");
-  scheduleContent.style.removeProperty("--swipe-opacity");
-  scheduleContent.style.removeProperty("--swipe-scale");
-  document.documentElement.classList.remove("is-horizontal-swiping");
-  document.body.classList.remove("is-horizontal-swiping");
-}
-
 function enableSchedulePagerSwipe() {
-  pageSwipeObserver = Observer.create({
+  Observer.create({
     target: window,
     type: "touch,pointer",
     onLeft: () => goDate(dateIndex(selectedDateKey) + 1),
@@ -1799,7 +1682,6 @@ async function patchScoresSilently() {
   } catch (e) { /* silent */ }
 }
 
-enableDateStripDrag();
 enableSchedulePagerSwipe();
 pruneTeamLogoCache();
 loadSchedule();
