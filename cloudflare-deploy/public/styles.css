@@ -981,6 +981,18 @@ button {
   color: #ff453a;
 }
 
+.ai-report-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  color: #30d158;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .ai-modal-placeholder {
   display: flex;
   flex-direction: column;

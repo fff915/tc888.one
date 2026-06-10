@@ -1285,7 +1285,7 @@ function matchCard(match, index, day) {
       <div class="match-card-footer">
         <button class="ai-analysis-btn" type="button" data-match-no="${escapeHtml(match.matchNo)}">
           <svg class="ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-          AI分析
+          AI报告
         </button>
       </div>
     </article>
@@ -1875,13 +1875,13 @@ function aiCurrentHtml(match) {
       <div class="ai-modal-section ai-section-deepseek active">
         <div class="ai-report-loading">
           <div class="ai-report-spinner"></div>
-          <span>DeepSeek 正在分析中...</span>
+          <span>加载中...</span>
         </div>
       </div>
       <div class="ai-modal-section ai-section-doubao">
         <div class="ai-report-loading">
           <div class="ai-report-spinner"></div>
-          <span>豆包 正在分析中...</span>
+          <span>加载中...</span>
         </div>
       </div>
     </div>
@@ -1962,7 +1962,14 @@ function loadAiReport(matchNo, modal) {
         return;
       }
       if (data.pending) {
-        pollAiReport(matchNo, modal, 0);
+        if (data.triggered) {
+          // Report has been triggered in background, ask user to retry shortly
+          if (dsSection) dsSection.innerHTML = '<div class="ai-report-notice">分析已后台生成中，请稍后重新打开查看</div>';
+          if (dbSection) dbSection.innerHTML = '<div class="ai-report-notice">分析已后台生成中，请稍后重新打开查看</div>';
+        } else {
+          // Recently created match, start short polling
+          pollAiReport(matchNo, modal, 0);
+        }
         return;
       }
       const reports = data.reports || {};
@@ -1970,8 +1977,8 @@ function loadAiReport(matchNo, modal) {
       populateAiReportSection(dbSection, reports.doubao?.content);
     })
     .catch(() => {
-      if (dsSection) if (dsSection.querySelector(".ai-report-loading")) {};
-      if (dbSection) if (dbSection.querySelector(".ai-report-loading")) {};
+      if (dsSection) dsSection.querySelector(".ai-report-loading");
+      if (dbSection) dbSection.querySelector(".ai-report-loading");
     });
 }
 

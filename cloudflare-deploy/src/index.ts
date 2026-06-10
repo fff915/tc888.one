@@ -4,7 +4,7 @@ import { isAdminRequest } from './middleware/auth';
 import { trackPageView, getPVStats } from './middleware/pv';
 import { loadAllMatches, findMatchByNo, loadApiUsage, upsertMatch, type MatchRecord } from './services/db';
 import { runApiFootballUpdate } from './services/apifootball';
-import { getAiReport, triggerAiForNewMatches } from './services/ai';
+import { getAiReport } from './services/ai';
 import { importSchedule } from './services/excel';
 import { normalizeMatchNo, nowISO, parseScore, matchNoSortKey, flagLogoUrl } from './utils/helpers';
 import { TEAM_LOGO_ALLOWED_HOSTS, TEAM_LOGO_MAX_BYTES, IMAGE_EXTENSIONS } from './data/constants';
@@ -15,6 +15,7 @@ export interface Env {
   ASSETS: Fetcher;
   SCORE_POLLER: DurableObjectNamespace;
   LOGO_PRECACHER: DurableObjectNamespace;
+  AI_ANALYZER: DurableObjectNamespace;
   API_FOOTBALL_API_KEY: string;
   API_FOOTBALL_BASE_URL: string;
   ADMIN_TOKEN: string;
@@ -171,6 +172,22 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
       const matchNo = url.searchParams.get('matchNo') || '';
       if (!matchNo) return jsonResponse({ ok: false, message: '缺少 matchNo 参数' }, 400);
       const result = await getAiReport(env, matchNo);
+
+      // Compensation: if report is pending and match was created > 5 min ago, trigger background generation
+      if (result.pending) {
+        const matchNoNorm = normalizeMatchNo(matchNo);
+        const match = await findMatchByNo(env, matchNoNorm);
+        if (match?.created_at) {
+          const createdAge = Date.now() - new Date(match.created_at + 'Z').getTime();
+          if (createdAge > 5 * 60 * 1000) {
+            const doId = env.AI_ANALYZER.idFromName('ai-analyzer');
+            const stub = env.AI_ANALYZER.get(doId);
+            ctx.waitUntil(stub.fetch(new Request('https://do/analyze')).catch(() => {}));
+            result.triggered = true;
+          }
+        }
+      }
+
       return jsonResponse({ ok: true, ...result });
     }
 
@@ -239,7 +256,10 @@ async function handleAdminApi(request: Request, env: Env, ctx: ExecutionContext)
         ctx.waitUntil(runApiFootballUpdate(env).catch(() => {}));
       }
       if (newMatches.length > 0) {
-        ctx.waitUntil(triggerAiForNewMatches(env, newMatches).catch(() => {}));
+        // Trigger AI analysis via Durable Object alarm (runs independently of request lifecycle)
+        const doId = env.AI_ANALYZER.idFromName('ai-analyzer');
+        const stub = env.AI_ANALYZER.get(doId);
+        ctx.waitUntil(stub.fetch(new Request('https://do/analyze')).catch(() => {}));
       }
 
       return jsonResponse({ ok: true, result });
@@ -540,5 +560,48 @@ export class LogoPrecacher {
     }
     // Schedule next run in 5 minutes
     await this.state.storage.setAlarm(Date.now() + 5 * 60 * 1000);
+  }
+}
+
+// AI Analysis — runs as a one-shot Durable Object alarm, independent of request lifecycle
+export class AiAnalyzer {
+  private state: DurableObjectState;
+  private env: Env;
+
+  constructor(state: DurableObjectState, env: Env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(_request: Request): Promise<Response> {
+    // Set a one-time alarm (2s delay) to process all matches without AI reports
+    await this.state.storage.setAlarm(Date.now() + 2000);
+    return new Response('AI analysis scheduled');
+  }
+
+  async alarm(): Promise<void> {
+    try {
+      const { loadAiReports } = await import('./services/db');
+      const { generateAiReportForMatch } = await import('./services/ai');
+      const allMatches = await loadAllMatches(this.env);
+      const reportsDb = await loadAiReports(this.env);
+
+      let processed = 0;
+      for (const match of allMatches) {
+        const mn = match.match_no_normalized;
+        if (!mn || reportsDb[mn]) continue;
+
+        try {
+          await generateAiReportForMatch(this.env, match);
+          reportsDb[mn] = {}; // mark in-memory to skip double-processing within same alarm
+          processed++;
+        } catch (e) {
+          console.error(`[AiAnalyzer] ${mn} analysis failed: ${e}`);
+        }
+      }
+      console.log(`[AiAnalyzer] Processed ${processed} match(es)`);
+    } catch (e) {
+      console.error(`[AiAnalyzer] Alarm error: ${e}`);
+    }
   }
 }

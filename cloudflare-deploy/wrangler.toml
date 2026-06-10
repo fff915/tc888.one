@@ -20,12 +20,13 @@ bucket_name = "tc888-storage"
 [durable_objects]
 bindings = [
   { name = "SCORE_POLLER", class_name = "ScorePoller" },
-  { name = "LOGO_PRECACHER", class_name = "LogoPrecacher" }
+  { name = "LOGO_PRECACHER", class_name = "LogoPrecacher" },
+  { name = "AI_ANALYZER", class_name = "AiAnalyzer" }
 ]
 
 [[migrations]]
-tag = "v1"
-new_sqlite_classes = ["ScorePoller", "LogoPrecacher"]
+tag = "v2"
+new_sqlite_classes = ["AiAnalyzer"]
 
 [triggers]
 crons = []
