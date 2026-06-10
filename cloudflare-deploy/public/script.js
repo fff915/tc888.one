@@ -16,6 +16,8 @@ let dateStripScrollTimer = 0;
 let dateStripProgrammaticTimer = 0;
 let isDateStripProgrammatic = false;
 let isScheduleTransitioning = false;
+let pageSwipeObserver = null;
+let dateStripDragEndedAt = 0;
 let entrancePlayed = false;
 let clickBlockUntil = 0;
 const imageCache = new Map();
@@ -1507,6 +1509,7 @@ function enableDateStripDrag() {
     obs.startX = event.clientX;
     obs.hasMoved = false;
     dateStrip.classList.add("dragging");
+    pageSwipeObserver?.disable();
   });
 
   dateStrip.addEventListener("pointermove", (event) => {
@@ -1525,6 +1528,11 @@ function enableDateStripDrag() {
     obs.active = false;
     dateStrip.classList.remove("dragging");
     try { dateStrip.releasePointerCapture?.(event.pointerId); } catch (e) {}
+
+    // Mark drag end time to suppress snapDateStripToCenter cooldown
+    dateStripDragEndedAt = Date.now();
+    // Re-enable page swipe observer after a brief cooldown
+    setTimeout(() => { pageSwipeObserver?.enable(); }, 300);
 
     if (!obs.hasMoved) return;
 
@@ -1557,6 +1565,8 @@ function enableDateStripDrag() {
 
 function snapDateStripToCenter() {
   if (isScheduleTransitioning) return;
+  // Suppress snap during cooldown after a drag ends (prevent bounce-back jitter)
+  if (Date.now() - dateStripDragEndedAt < 400) return;
   const centeredDateKey = closestCenteredDateKey();
   if (!centeredDateKey) return;
   selectDate(centeredDateKey, { animate: centeredDateKey !== selectedDateKey, center: true, scrollTop: true });
@@ -1585,7 +1595,7 @@ function resetSwipeVisuals() {
 }
 
 function enableSchedulePagerSwipe() {
-  Observer.create({
+  pageSwipeObserver = Observer.create({
     target: window,
     type: "touch,pointer",
     onLeft: () => goDate(dateIndex(selectedDateKey) + 1),
