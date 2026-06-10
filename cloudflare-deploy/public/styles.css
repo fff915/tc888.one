@@ -100,7 +100,7 @@ button {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0;
-  scroll-snap-type: x mandatory;
+  scroll-snap-type: x proximity;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
