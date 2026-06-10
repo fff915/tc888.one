@@ -1818,6 +1818,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ---- AI 分析弹窗 ----
+const aiReportCache = new Map();
 function findMatchByNo(matchNo) {
   for (const day of scheduleDays) {
     const found = (day.matches || []).find((m) => m.matchNo === matchNo);
@@ -1953,6 +1954,14 @@ function loadAiReport(matchNo, modal) {
   const dsSection = modal.querySelector(".ai-section-deepseek");
   const dbSection = modal.querySelector(".ai-section-doubao");
 
+  // Check frontend cache first — instant display if already fetched
+  const cached = aiReportCache.get(matchNo);
+  if (cached) {
+    populateAiReportSection(dsSection, cached.deepseek?.content);
+    populateAiReportSection(dbSection, cached.doubao?.content);
+    return;
+  }
+
   fetch(`/api/ai-report?matchNo=${encodeURIComponent(matchNo)}`)
     .then((r) => r.json())
     .then((data) => {
@@ -1963,16 +1972,15 @@ function loadAiReport(matchNo, modal) {
       }
       if (data.pending) {
         if (data.triggered) {
-          // Report has been triggered in background, ask user to retry shortly
           if (dsSection) dsSection.innerHTML = '<div class="ai-report-notice">分析已后台生成中，请稍后重新打开查看</div>';
           if (dbSection) dbSection.innerHTML = '<div class="ai-report-notice">分析已后台生成中，请稍后重新打开查看</div>';
         } else {
-          // Recently created match, start short polling
           pollAiReport(matchNo, modal, 0);
         }
         return;
       }
       const reports = data.reports || {};
+      aiReportCache.set(matchNo, reports);
       populateAiReportSection(dsSection, reports.deepseek?.content);
       populateAiReportSection(dbSection, reports.doubao?.content);
     })
@@ -1996,6 +2004,7 @@ function pollAiReport(matchNo, modal, attempt) {
           return;
         }
         const reports = data.reports || {};
+        aiReportCache.set(matchNo, reports);
         populateAiReportSection(dsSection, reports.deepseek?.content);
         populateAiReportSection(dbSection, reports.doubao?.content);
       })
