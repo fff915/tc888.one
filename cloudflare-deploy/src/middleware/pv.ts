@@ -7,8 +7,14 @@ export async function trackPageView(request: Request, env: Env): Promise<void> {
     const url = new URL(request.url);
     const path = url.pathname;
     
-    // Only track page views, not API calls
+    // Only track actual page views, not API calls or static asset requests
     if (path.startsWith('/api/') || path.startsWith('/daily-image/') || path.startsWith('/admin/')) {
+      return;
+    }
+    
+    // Exclude static file extensions
+    const staticExts = /\.(css|js|ico|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot|map|txt|xml|json|pdf)$/i;
+    if (staticExts.test(path)) {
       return;
     }
 
