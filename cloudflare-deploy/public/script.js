@@ -1874,16 +1874,10 @@ function aiCurrentHtml(match) {
         <span class="ai-indicator-dot" data-ai="doubao"></span>
       </div>
       <div class="ai-modal-section ai-section-deepseek active">
-        <div class="ai-report-loading">
-          <div class="ai-report-spinner"></div>
-          <span>加载中...</span>
-        </div>
+        <div class="ai-report-placeholder"></div>
       </div>
       <div class="ai-modal-section ai-section-doubao">
-        <div class="ai-report-loading">
-          <div class="ai-report-spinner"></div>
-          <span>加载中...</span>
-        </div>
+        <div class="ai-report-placeholder"></div>
       </div>
     </div>
   `;
@@ -1984,10 +1978,7 @@ function loadAiReport(matchNo, modal) {
       populateAiReportSection(dsSection, reports.deepseek?.content);
       populateAiReportSection(dbSection, reports.doubao?.content);
     })
-    .catch(() => {
-      if (dsSection) dsSection.querySelector(".ai-report-loading");
-      if (dbSection) dbSection.querySelector(".ai-report-loading");
-    });
+    .catch(() => {});
 }
 
 function pollAiReport(matchNo, modal, attempt) {

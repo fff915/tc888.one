@@ -993,6 +993,10 @@ button {
   line-height: 1.6;
 }
 
+.ai-report-placeholder {
+  min-height: 60px;
+}
+
 .ai-modal-placeholder {
   display: flex;
   flex-direction: column;
