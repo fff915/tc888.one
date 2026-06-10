@@ -155,6 +155,18 @@ export function parseKickoff(value: unknown): Date {
     }
   }
 
+  // Try Excel serial date number (e.g., 46185.125 = days since 1899-12-30)
+  const num = parseFloat(text);
+  if (!isNaN(num) && num > 30000 && num < 100000) {
+    // Excel epoch is 1899-12-30 (days), with time as decimal fraction
+    const days = Math.floor(num);
+    const frac = num - days;
+    const msPerDay = 86400000;
+    const base = Date.UTC(1899, 11, 30); // Dec 30, 1899 at midnight UTC
+    const timestamp = base + days * msPerDay + Math.round(frac * msPerDay);
+    return new Date(timestamp);
+  }
+
   throw new Error(`开赛日期格式无法识别：${value}`);
 }
 

@@ -219,7 +219,7 @@ async function handleAdminApi(request: Request, env: Env, ctx: ExecutionContext)
       let allRecords: Record<string, string>[] = [];
       for (const sheetName of workbook.SheetNames) {
         const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as unknown[][];
         
         const { parseExcelSheet } = await import('./services/excel');
         const parsed = parseExcelSheet(rows);
