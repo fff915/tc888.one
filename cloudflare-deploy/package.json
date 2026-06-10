@@ -1,0 +1,21 @@
+{
+  "name": "tc888-cloudflare",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create tc888-db",
+    "db:execute": "wrangler d1 execute tc888-db --file=./schema.sql",
+    "r2:create": "wrangler r2 bucket create tc888-storage"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241106.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^3.99.0"
+  }
+}

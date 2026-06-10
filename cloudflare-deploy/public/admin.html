@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QTC 后台管理</title>
+  <link rel="stylesheet" href="/admin.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <h1 class="login-title">QTC 后台管理</h1>
+      <p class="login-desc">请输入管理员 Token 登录</p>
+      <input id="tokenInput" class="login-input" type="password" placeholder="Admin Token" autocomplete="off" />
+      <button id="loginBtn" class="login-btn" type="button">登 录</button>
+      <p id="loginError" class="login-error"></p>
+    </div>
+  </div>
+
+  <!-- Dashboard (hidden until login) -->
+  <div id="dashboard" class="dashboard" style="display:none">
+    <header class="dash-header">
+      <h1>QTC 赛程管理</h1>
+      <div class="header-actions">
+        <span id="headerTime" class="header-time"></span>
+        <button id="logoutBtn" class="logout-btn" type="button">退出</button>
+      </div>
+    </header>
+
+    <main class="dash-main">
+      <!-- Stats Row -->
+      <section class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">今日 PV</div>
+          <div class="stat-value" id="statTodayPV">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">昨日 PV</div>
+          <div class="stat-value" id="statYesterdayPV">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">总 PV</div>
+          <div class="stat-value" id="statTotalPV">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">今日访客</div>
+          <div class="stat-value" id="statTodayVisitors">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">总访客</div>
+          <div class="stat-value" id="statTotalVisitors">-</div>
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <section class="charts-row">
+        <div class="chart-card">
+          <h3 class="chart-title">最近 7 天 PV</h3>
+          <div class="chart-wrap"><canvas id="chart7Days"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3 class="chart-title">最近 30 天 PV</h3>
+          <div class="chart-wrap"><canvas id="chart30Days"></canvas></div>
+        </div>
+      </section>
+
+      <!-- Excel Upload -->
+      <section class="upload-section">
+        <h2 class="section-title">赛程 Excel 上传</h2>
+        <div id="uploadZone" class="upload-zone">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <p class="upload-text">拖拽 .xlsx / .xls 文件到此处，或点击选择</p>
+          <p class="upload-hint">表格需包含：竞彩编号、赛事种类、双方队伍、开赛日期</p>
+          <input id="fileInput" type="file" accept=".xlsx,.xls" hidden />
+        </div>
+        <div id="uploadProgress" class="upload-progress" style="display:none">
+          <div class="progress-bar"></div>
+          <span class="progress-text">正在上传解析...</span>
+        </div>
+        <div id="uploadResult" class="upload-result" style="display:none"></div>
+      </section>
+
+      <!-- Import History -->
+      <section class="history-section">
+        <h2 class="section-title">导入历史</h2>
+        <div class="table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>文件</th>
+                <th>状态</th>
+                <th>新增</th>
+                <th>覆盖</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr><td colspan="6" class="empty-cell">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/admin.js"></script>
+</body>
+</html>
