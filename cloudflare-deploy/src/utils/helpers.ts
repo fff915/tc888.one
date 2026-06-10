@@ -139,18 +139,30 @@ export function parseKickoff(value: unknown): Date {
 
   // Try various formats
   const formats = [
-    { regex: /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})$/, hasYear: true },
-    { regex: /^(\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})$/, hasYear: false },
+    // 2026-06-12 15:00
+    { regex: /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})$/, yearGroup: 1, monthGroup: 2, dayGroup: 3, hourGroup: 4, minuteGroup: 5 },
+    // 6-12 15:00 (no year)
+    { regex: /^(\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})$/, monthGroup: 1, dayGroup: 2, hourGroup: 3, minuteGroup: 4 },
+    // 6/12/26 15:00 (2-digit year, M/D/YY)
+    { regex: /^(\d{1,2})[-/](\d{1,2})[-/](\d{2})\s+(\d{1,2}):(\d{2})$/, yearGroup: 3, yearLen: 2, monthGroup: 1, dayGroup: 2, hourGroup: 4, minuteGroup: 5 },
+    // 2026/06/12 15:00
+    { regex: /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})\s+(\d{1,2}):(\d{2})$/, yearGroup: 1, monthGroup: 2, dayGroup: 3, hourGroup: 4, minuteGroup: 5 },
   ];
 
   for (const fmt of formats) {
     const m = text.match(fmt.regex);
     if (m) {
-      const year = fmt.hasYear ? parseInt(m[1]) : new Date().getFullYear();
-      const month = parseInt(fmt.hasYear ? m[2] : m[1]);
-      const day = parseInt(fmt.hasYear ? m[3] : m[2]);
-      const hour = parseInt(fmt.hasYear ? m[4] : m[3]);
-      const minute = parseInt(fmt.hasYear ? m[5] : m[4]);
+      let year: number;
+      if ((fmt as any).yearGroup) {
+        year = parseInt(m[(fmt as any).yearGroup]);
+        if ((fmt as any).yearLen === 2) year += 2000;
+      } else {
+        year = new Date().getFullYear();
+      }
+      const month = parseInt(m[(fmt as any).monthGroup]);
+      const day = parseInt(m[(fmt as any).dayGroup]);
+      const hour = parseInt(m[(fmt as any).hourGroup]);
+      const minute = parseInt(m[(fmt as any).minuteGroup]);
       return new Date(year, month - 1, day, hour, minute, 0, 0);
     }
   }
