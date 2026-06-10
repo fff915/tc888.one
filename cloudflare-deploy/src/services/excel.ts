@@ -49,7 +49,10 @@ export function parseExcelSheet(rows: unknown[][]): { records: Record<string, st
   return null;
 }
 
-export async function importSchedule(env: Env, records: Record<string, string>[], fileName: string): Promise<Record<string, unknown>> {
+export async function importSchedule(env: Env, records: Record<string, string>[], fileName: string): Promise<{
+  result: Record<string, unknown>;
+  newMatches: MatchRecord[];
+}> {
   const allMatches = await loadAllMatches(env);
   const byNo: Record<string, MatchRecord> = {};
   for (const m of allMatches) {

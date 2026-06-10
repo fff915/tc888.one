@@ -197,12 +197,13 @@ async function handleAdminApi(request: Request, env: Env, ctx: ExecutionContext)
 
       const formData = await request.formData();
       const file = formData.get('file');
-      if (!file || !(file instanceof File)) {
+      if (!file || typeof file === 'string') {
         return jsonResponse({ ok: false, message: '未上传文件' }, 400);
       }
+      const uploadedFile = file as unknown as { name: string; arrayBuffer(): Promise<ArrayBuffer> };
 
-      const fileName = file.name;
-      const buffer = await file.arrayBuffer();
+      const fileName = uploadedFile.name;
+      const buffer = await uploadedFile.arrayBuffer();
       
       // Store in R2
       const r2Key = `excels/${Date.now()}_${fileName}`;
