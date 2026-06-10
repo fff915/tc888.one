@@ -103,7 +103,6 @@ button {
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  cursor: grab;
   touch-action: pan-x;
 }
 
@@ -1360,9 +1359,7 @@ button {
 
 /* date-strip smooth scroll */
 .date-strip {
-  scroll-behavior: smooth;
   overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* match-card enhanced GSAP-style reveal */

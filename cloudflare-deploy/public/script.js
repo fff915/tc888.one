@@ -238,7 +238,8 @@ function centerDateChip(dateKey, { behavior = "smooth" } = {}) {
   if (behavior === "auto") {
     dateStrip.scrollLeft = targetLeft;
   } else {
-    smoothCenterTo(dateStrip, targetLeft, 400);
+    // Match goDate card animation duration (~280ms) so chip and cards move in sync
+    smoothCenterTo(dateStrip, targetLeft, 280);
   }
 }
 
