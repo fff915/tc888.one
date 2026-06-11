@@ -1,3 +1,8 @@
+// Enhanced scroll-to-center (简化)
+function smoothCenterTo(container, targetScroll) {
+  container.scrollLeft = targetScroll;
+}
+
 const dateStrip = document.getElementById("dateStrip");
 const dateTopBar = document.getElementById("dateTopBar");
 const scheduleContent = document.getElementById("schedule-content");
@@ -11,9 +16,6 @@ const qrCopyButton = document.getElementById("qrCopyButton");
 let scheduleDays = [];
 let selectedDateKey = "";
 let toastTimer;
-let isScheduleTransitioning = false;
-let isDateStripProgrammatic = false;
-let dateStripScrollTimer = 0;
 let entrancePlayed = false;
 let clickBlockUntil = 0;
 const imageCache = new Map();
@@ -22,10 +24,14 @@ const preloadImageKinds = ["contact", "draw", "homework"];
 const imageMetaStorageKey = "qtcDailyImageCache:v1";
 const imageMetaCacheTtl = 30 * 24 * 60 * 60 * 1000;
 let contactImageReady = null;
-const scheduleMarkupCache = new Map();
-const schedulePageCache = new Map();
 const dateOffsets = [-4, -3, -2, -1, 0, 1];
 const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
+// 视图缓存：dateKey -> DOM元素
+const pageDomCache = new Map();
+// 预渲染的 3 页 (prev, current, next)
+// 始终维护当前页 + 左右各 1 页的 DOM
+const PAGE_POSITIONS = 3;
 
 function localDateKey(date = new Date()) {
   const year = date.getFullYear();
@@ -54,33 +60,7 @@ function nearbyDates() {
 }
 
 function playEntrance() {
-  if (entrancePlayed) return;
-  entrancePlayed = true;
-
-  const cards = Array.from(scheduleContent.querySelectorAll(".match-card"));
-  if (!cards.length) return;
-
-  cards.forEach((card) => {
-    card.classList.remove("reveal-delay-1", "reveal-delay-2", "reveal-delay-3", "reveal-delay-4", "reveal-delay-5");
-    card.classList.add("anim-entrance");
-  });
-
-  cards.forEach((card, i) => {
-    gsapAnimate(
-      700,
-      gsapEasing.power2Out,
-      (t) => {
-        card.style.opacity = String(t);
-        card.style.transform = `translate3d(0, ${30 * (1 - t)}px, 0)`;
-      },
-      () => {
-        card.classList.remove("anim-entrance");
-        card.style.opacity = "";
-        card.style.transform = "";
-      },
-      i * 100,
-    );
-  });
+  // 已删除：不再使用入场动画
 }
 
 function escapeHtml(value) {
@@ -232,22 +212,13 @@ function dayForDate(dateKey) {
   return scheduleDays.find((item) => item.dateKey === dateKey);
 }
 
-function centerDateChip(dateKey, { behavior = "smooth" } = {}) {
-  const chip = dateStrip.querySelector(`.date-chip[data-date="${CSS.escape(dateKey)}"]`);
+function centerDateChip(dateKey) {
+  const chip = dateStrip.querySelector('.date-chip[data-date="' + CSS.escape(dateKey) + '"]');
   if (!chip) return;
-
-  const targetLeft = Math.max(0, chip.offsetLeft - (dateStrip.clientWidth - chip.offsetWidth) / 2);
-  if (behavior === "auto") {
-    isDateStripProgrammatic = true;
-    dateStrip.scrollLeft = targetLeft;
-    clearTimeout(dateStripScrollTimer);
-    dateStripScrollTimer = window.setTimeout(() => { isDateStripProgrammatic = false; }, 100);
-  } else {
-    isDateStripProgrammatic = true;
-    smoothCenterTo(dateStrip, targetLeft, 280);
-    clearTimeout(dateStripScrollTimer);
-    dateStripScrollTimer = window.setTimeout(() => { isDateStripProgrammatic = false; }, 320);
-  }
+  const targetLeft = Math.max(0,
+    chip.offsetLeft - (dateStrip.clientWidth - chip.offsetWidth) / 2
+  );
+  dateStrip.scrollLeft = targetLeft;
 }
 
 function setDateChipActive(dateKey) {
@@ -259,23 +230,16 @@ function setDateChipActive(dateKey) {
 }
 
 function preloadScheduleDate(dateKey) {
-  if (!validDateKey(dateKey) || scheduleMarkupCache.has(dateKey)) return;
-  scheduleMarkupCache.set(dateKey, scheduleMarkupForDate(dateKey));
+  // 已删除：改用 pageDomCache 机制
 }
 
 function preloadAdjacentSchedules(dateKey) {
-  const index = dateIndex(dateKey);
-  if (index < 0) return;
-  const dates = dateItems();
-  [index - 1, index + 1].forEach((nextIndex) => {
-    const item = dates[nextIndex];
-    if (item) preloadScheduleDate(item.dateKey);
-  });
+  // 已删除：改用 ensurePagesInDom 机制
 }
 
 function showTodaySchedule() {
   dateTopBar.style.display = "";
-  selectDate(localDateKey(), { animate: false, center: true, scrollTop: true, force: true });
+  selectDate(localDateKey(), { scrollTop: true, force: true });
 }
 
 function buildDateStrip({ alignActive = true } = {}) {
@@ -305,7 +269,7 @@ function buildDateStrip({ alignActive = true } = {}) {
   bindDateChipClicks();
 
   if (alignActive) {
-    requestAnimationFrame(() => centerDateChip(selectedDateKey, { behavior: "auto" }));
+    requestAnimationFrame(() => centerDateChip(selectedDateKey));
   }
 }
 
@@ -1227,7 +1191,7 @@ function matchCard(match, index, day) {
   const isFinished = statusHtml.includes("finished");
 
   return `
-    <article class="match-card reveal-delay-${Math.min(index + 1, 5)}" data-match-no="${escapeHtml(match.matchNo)}">
+    <article class="match-card" data-match-no="${escapeHtml(match.matchNo)}">
       <div class="match-card-top">
         <div>
           <div class="match-league">${renderMatchNo(match.matchNo)} · <span class="match-league-name">${escapeHtml(match.league)}</span></div>
@@ -1282,159 +1246,101 @@ function scheduleMarkupForDate(dateKey) {
   `;
 }
 
-function markCardsVisible(scope = scheduleContent) {
-  hydrateTeamBadges(scope);
-  requestAnimationFrame(() => {
-    scope.querySelectorAll(".match-card").forEach((card) => card.classList.add("visible"));
-    requestAnimationFrame(() => staggerMatchCards(scope));
-  });
-}
-
 function isAnyModalOpen() {
   return qrModal.classList.contains("open") ||
     menuPopup.classList.contains("open") ||
     document.querySelector(".ai-modal-overlay") !== null;
 }
 
+// === 视图预加载：确保当前日期及左右各 1 页都在 DOM 中 ===
+function ensurePagesInDom() {
+  const dates = dateItems();
+  const curIdx = dateIndex(selectedDateKey);
+  if (curIdx < 0) return;
+
+  const need = [dates[curIdx - 1], dates[curIdx], dates[curIdx + 1]].filter(Boolean);
+  const needKeys = new Set(need.map((d) => d.dateKey));
+
+  // 从 scheduleContent 中移出不需要的页面（保留缓存）
+  const existing = Array.from(scheduleContent.children);
+  existing.forEach((page) => {
+    if (!needKeys.has(page.dataset.date)) {
+      scheduleContent.removeChild(page);
+    }
+  });
+
+  // 确保需要的页面已在 DOM 中（带正确 class）
+  need.forEach((day) => {
+    let page = pageDomCache.get(day.dateKey);
+    if (!page) {
+      page = document.createElement("div");
+      page.className = "schedule-page";
+      page.dataset.date = day.dateKey;
+      page.innerHTML = scheduleMarkupForDate(day.dateKey);
+      pageDomCache.set(day.dateKey, page);
+      scheduleContent.appendChild(page);
+      hydrateTeamBadges(page);
+    } else if (page.parentNode !== scheduleContent) {
+      scheduleContent.appendChild(page);
+    }
+    const isActive = day.dateKey === selectedDateKey;
+    page.classList.toggle("active", isActive);
+  });
+}
+
+// 离屏预取：提前创建更外层日期的 DOM（不插入主视图）
+function prefetchAdjacentDates(currentDateKey) {
+  const dates = dateItems();
+  const curIdx = dateIndex(currentDateKey);
+  if (curIdx < 0) return;
+  [curIdx - 2, curIdx + 2].forEach((i) => {
+    const day = dates[i];
+    if (!day) return;
+    if (!pageDomCache.has(day.dateKey)) {
+      const page = document.createElement("div");
+      page.className = "schedule-page";
+      page.dataset.date = day.dateKey;
+      page.innerHTML = scheduleMarkupForDate(day.dateKey);
+      pageDomCache.set(day.dateKey, page);
+    }
+  });
+}
+
 function updateChips() {
   setDateChipActive(selectedDateKey);
-  const active = dateStrip.querySelector(".date-chip.active");
-  if (active) {
-    const targetLeft = Math.max(0,
-      active.offsetLeft - (dateStrip.clientWidth - active.offsetWidth) / 2
-    );
-    isDateStripProgrammatic = true;
-    smoothCenterTo(dateStrip, targetLeft, 280);
-    clearTimeout(dateStripScrollTimer);
-    dateStripScrollTimer = window.setTimeout(() => { isDateStripProgrammatic = false; }, 320);
-  }
 }
 
 function goDate(idx) {
   const dates = dateItems();
   if (idx < 0 || idx >= dates.length) return false;
   if (idx === dateIndex(selectedDateKey)) return false;
-  if (isScheduleTransitioning || isAnyModalOpen()) return false;
+  if (isAnyModalOpen()) return false;
+  if (performance.now() < clickBlockUntil) return false;
+  clickBlockUntil = performance.now() + 150;
 
-  isScheduleTransitioning = true;
-
-  window.setTimeout(() => {
-    if (isScheduleTransitioning) {
-      isScheduleTransitioning = false;
-    }
-  }, 1800);
-
-  const dir = idx > dateIndex(selectedDateKey) ? -1 : 1;
-  const oldCards = scheduleContent.querySelectorAll(".match-card");
-
-  const tlOut = gsap.timeline({
-    onComplete() {
-      selectedDateKey = dates[idx].dateKey;
-      updateChips();
-
-      // 直接生成新HTML，避免缓存元素被移除后无法重用
-      const pageHtml = pageHtmlForDate(selectedDateKey);
-  scheduleContent.innerHTML = pageHtml;
-  const page = scheduleContent.firstElementChild;
-      hydrateTeamBadges(page);
-      preloadAdjacentSchedules(selectedDateKey);
-
-      const newCards = scheduleContent.querySelectorAll(".match-card");
-      gsap.set(newCards, { xPercent: dir * -60, opacity: 0 });
-
-      gsap.timeline({
-        onComplete() {
-          isScheduleTransitioning = false;
-        },
-      }).to(newCards, {
-        xPercent: 0,
-        opacity: 1,
-        duration: 0.28,
-        ease: "power2.out",
-        stagger: 0.04,
-      });
-    },
-  });
-
-  tlOut.to(oldCards, {
-    xPercent: dir * 60,
-    opacity: 0,
-    duration: 0.2,
-    ease: "power2.in",
-    stagger: 0.03,
-  });
-
+  selectedDateKey = dates[idx].dateKey;
+  updateChips();
+  ensurePagesInDom();
+  prefetchAdjacentDates(selectedDateKey);
   return true;
 }
 
-function resetSchedulePageState(page, active = false) {
-  page.className = active ? "schedule-page active" : "schedule-page";
-  page.style.removeProperty("--swipe-scale");
-  page.style.removeProperty("--swipe-opacity");
-  return page;
+function renderSchedule() {
+  ensurePagesInDom();
+  prefetchAdjacentDates(selectedDateKey);
 }
 
-function schedulePageForDate(dateKey) {
-  let page = schedulePageCache.get(dateKey);
-  if (page) {
-    return page;
-  }
-
-  page = document.createElement("div");
-  page.dataset.date = dateKey;
-  page.innerHTML = scheduleMarkupCache.get(dateKey) || scheduleMarkupForDate(dateKey);
-  scheduleMarkupCache.set(dateKey, page.innerHTML);
-  schedulePageCache.set(dateKey, page);
-  return page;
-}
-
-function pageHtmlForDate(dateKey) {
-  const cached = scheduleMarkupCache.get(dateKey);
-  const markup = cached || scheduleMarkupForDate(dateKey);
-  scheduleMarkupCache.set(dateKey, markup);
-  return `<div class="schedule-page active" data-date="${escapeHtml(dateKey)}">${markup}</div>`;
-}
-
-function renderSchedule({ animate = false, nextDateKey = selectedDateKey } = {}) {
-
-  if (!animate || !scheduleContent.querySelector(".schedule-page")) {
-    scheduleContent.classList.remove("is-transitioning", "is-swiping");
-    const page = resetSchedulePageState(schedulePageForDate(nextDateKey), true);
-    scheduleContent.replaceChildren(page);
-    markCardsVisible(page);
-    preloadAdjacentSchedules(nextDateKey);
-    return;
-  }
-
-  const idx = dateItems().findIndex((d) => d.dateKey === nextDateKey);
-  if (idx >= 0) goDate(idx);
-}
-
-function selectDate(dateKey, { animate = true, center = true, scrollTop = true, force = false } = {}) {
+function selectDate(dateKey, { scrollTop = true, force = false } = {}) {
   if (!validDateKey(dateKey)) return false;
-  if (isScheduleTransitioning && !force) return false;
-
   if (dateKey === selectedDateKey && !force) {
-    updateChips();
-    if (scrollTop) window.scrollTo({ top: 0, behavior: "smooth" });
-    return true;
-  }
-
-  if (!animate || !scheduleContent.querySelector(".schedule-page")) {
-    selectedDateKey = dateKey;
-    setDateChipActive(dateKey);
-    renderSchedule({ animate: false, nextDateKey: dateKey });
-    if (center) centerDateChip(dateKey, { behavior: "auto" });
     if (scrollTop) window.scrollTo({ top: 0, behavior: "auto" });
     return true;
   }
-
   const idx = dateItems().findIndex((d) => d.dateKey === dateKey);
   if (idx < 0) return false;
-
-  clickBlockUntil = performance.now() + 800;
-  // 切换不同日期时不再自动滚动到顶部，仅保留点击同一日期时滚动
-  return goDate(idx);
+  goDate(idx);
+  if (scrollTop) window.scrollTo({ top: 0, behavior: "auto" });
+  return true;
 }
 
 async function loadSchedule({ notify = false } = {}) {
@@ -1443,11 +1349,10 @@ async function loadSchedule({ notify = false } = {}) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     scheduleDays = payload.days || [];
-    scheduleMarkupCache.clear();
-    schedulePageCache.clear();
+    pageDomCache.clear();
 
     buildDateStrip();
-    renderSchedule({ animate: false });
+    renderSchedule();
     setTimeout(playEntrance, 100);
     setTimeout(prefetchAiReports, 200);
 
@@ -1471,7 +1376,7 @@ function bindDateChipClicks() {
   dateStrip.querySelectorAll(".date-chip").forEach((chip) => {
     chip.addEventListener("click", (event) => {
       event.preventDefault();
-      selectDate(chip.dataset.date, { animate: true, center: true, scrollTop: true });
+      selectDate(chip.dataset.date, { scrollTop: true });
     });
   });
 }
@@ -1479,7 +1384,7 @@ function bindDateChipClicks() {
 document.addEventListener(
   "click",
   (event) => {
-    if (isScheduleTransitioning || performance.now() < clickBlockUntil) {
+    if (performance.now() < clickBlockUntil) {
       if (dateStrip.contains(event.target)) return;
       if (scheduleContent.contains(event.target)) {
         event.preventDefault();
@@ -1491,68 +1396,32 @@ document.addEventListener(
 );
 
 function enableSchedulePagerSwipe() {
-  Observer.create({
-    target: scheduleContent,
-    type: "touch,pointer",
-    dragMinimum: 45,
-    preventDefault: false,
-    onLeft(self) {
-      const absDx = Math.abs(self.deltaX);
-      let skip = 1;
-      if (absDx > 180) skip = 3;
-      else if (absDx > 90) skip = 2;
-      const dates = dateItems();
-      let targetIdx = dateIndex(selectedDateKey) + skip;
-      if (targetIdx >= dates.length) targetIdx = dates.length - 1;
-      goDate(targetIdx);
-    },
-    onRight(self) {
-      const absDx = Math.abs(self.deltaX);
-      let skip = 1;
-      if (absDx > 180) skip = 3;
-      else if (absDx > 90) skip = 2;
-      const dates = dateItems();
-      let targetIdx = dateIndex(selectedDateKey) - skip;
-      if (targetIdx < 0) targetIdx = 0;
-      goDate(targetIdx);
-    },
+  let startX = 0;
+  let tracking = false;
+
+  scheduleContent.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button") || e.target.closest("a")) return;
+    startX = e.clientX;
+    tracking = true;
   });
+
+  scheduleContent.addEventListener("pointerup", (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) < 50) return;
+    const dates = dateItems();
+    const curIdx = dateIndex(selectedDateKey);
+    const targetIdx = dx < 0 ? curIdx + 1 : curIdx - 1;
+    if (targetIdx >= 0 && targetIdx < dates.length) goDate(targetIdx);
+  });
+
+  scheduleContent.addEventListener("pointercancel", () => { tracking = false; });
 }
 
 // Date strip navigation: when user drags the strip, detect the centered chip and switch dates
 function enableDateStripNavigation() {
-  dateStrip.addEventListener(
-    "scroll",
-    () => {
-      // Skip scroll events caused by programmatic animation
-      if (isDateStripProgrammatic || isScheduleTransitioning) return;
-      clearTimeout(dateStripScrollTimer);
-      dateStripScrollTimer = window.setTimeout(() => {
-        if (isDateStripProgrammatic || isScheduleTransitioning) return;
-        const chips = Array.from(dateStrip.querySelectorAll(".date-chip"));
-        if (!chips.length) return;
-        const stripCenter = dateStrip.scrollLeft + dateStrip.clientWidth / 2;
-        let closest = chips[0];
-        let closestDistance = Infinity;
-        for (const chip of chips) {
-          const chipCenter = chip.offsetLeft + chip.offsetWidth / 2;
-          const distance = Math.abs(chipCenter - stripCenter);
-          if (distance < closestDistance) {
-            closest = chip;
-            closestDistance = distance;
-          }
-        }
-        if (closest && closest.dataset.date && closest.dataset.date !== selectedDateKey) {
-          // Switch date without triggering another scroll animation from centerDateChip
-          const targetDateKey = closest.dataset.date;
-          const dates = dateItems();
-          const targetIdx = dates.findIndex((d) => d.dateKey === targetDateKey);
-          if (targetIdx >= 0) goDate(targetIdx);
-        }
-      }, 140);
-    },
-    { passive: true }
-  );
+  // 已删除滚动触发切换逻辑，仅保留 chip 点击即可
 }
 
 async function openImageModal(kind = "contact") {
@@ -1710,10 +1579,9 @@ async function patchScoresSilently() {
 
     if (newMatches.length !== oldCount || newKeys !== oldKeys) {
       scheduleDays = days;
-      scheduleMarkupCache.clear();
-      schedulePageCache.clear();
+      pageDomCache.clear();
       buildDateStrip();
-      renderSchedule({ animate: false });
+      renderSchedule();
       return;
     }
 
@@ -2096,48 +1964,18 @@ function openAiAnalysis(matchNo) {
     const oldIdx = (currentDay.matches || []).indexOf(currentMatch);
     const dir = newIdx > oldIdx ? 1 : -1;
 
-    gsap.to(oldPager, {
-      yPercent: dir * -100,
-      opacity: 0,
-      duration: 0.2,
-      ease: "power2.in",
-      onComplete() {
-        gsap.to(oldPeeks, { opacity: 0, duration: 0.12, onComplete() {
-        currentMatch = newMatch;
-        currentDay = newDay;
+    // 直接切换内容，不使用 gsap 动画
+    currentMatch = newMatch;
+    currentDay = newDay;
 
-        modal.innerHTML = buildAiModalHtml(newMatch, newDay);
-        modal.querySelector(".ai-modal-close").addEventListener("click", close);
-        bindAiTabs();
-        bindAiPeeks();
-        bindAiVerticalSwipe();
-        requestAnimationFrame(() => hydrateTeamBadges(modal));
-        loadAiReport(newMatch.matchNo, modal);
-
-        const newPager = modal.querySelector(".ai-modal-pager");
-        const newPeeks = modal.querySelectorAll(".ai-match-peek");
-
-        gsap.set(newPager, { yPercent: dir * 100, opacity: 0 });
-        gsap.set(newPeeks, { opacity: 0 });
-
-        gsap.to(newPager, {
-          yPercent: 0,
-          opacity: 1,
-          duration: 0.28,
-          ease: "power2.out",
-        });
-        gsap.to(newPeeks, {
-          opacity: 1,
-          duration: 0.35,
-          ease: "power2.out",
-          onComplete() {
-            isAiSwipeTransitioning = false;
-            newPeeks.forEach((el) => { el.style.removeProperty("opacity"); });
-          },
-        });
-        }});
-      },
-    });
+    modal.innerHTML = buildAiModalHtml(newMatch, newDay);
+    modal.querySelector(".ai-modal-close").addEventListener("click", close);
+    bindAiTabs();
+    bindAiPeeks();
+    bindAiVerticalSwipe();
+    requestAnimationFrame(() => hydrateTeamBadges(modal));
+    loadAiReport(newMatch.matchNo, modal);
+    isAiSwipeTransitioning = false;
   }
 
   function bindAiVerticalSwipe() {
@@ -2220,74 +2058,9 @@ document.addEventListener("click", (e) => {
   openAiAnalysis(btn.dataset.matchNo);
 });
 
-// === GSAP-style Easing Functions ===
-const gsapEasing = {
-  power1: (t) => t,
-  power2: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
-  power2In: (t) => t * t,
-  power2Out: (t) => 1 - Math.pow(1 - t, 2),
-  power3: (t) => t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1,
-  power4: (t) => t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2,
-  back: (t) => {
-    const c1 = 1.70158;
-    const c3 = c1 + 1;
-    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-  },
-  elastic: (t) => {
-    const c4 = (2 * Math.PI) / 3;
-    return t === 0 ? 0 : t === 1 ? 1 : -Math.pow(2, 10 * t - 10) * Math.sin((t * 10 - 10.75) * c4);
-  },
-  bounce: (t) => {
-    const n1 = 7.5625;
-    const d1 = 2.75;
-    if (t < 1 / d1) return n1 * t * t;
-    if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
-    if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
-    return n1 * (t -= 2.625 / d1) * t + 0.984375;
-  },
-};
-
-function gsapAnimate(duration, easing, onUpdate, onComplete, delayMs = 0) {
-  const start = performance.now() + delayMs;
-  function frame(now) {
-    if (now < start) {
-      requestAnimationFrame(frame);
-      return;
-    }
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = easing(progress);
-    onUpdate(eased);
-    if (progress < 1) {
-      requestAnimationFrame(frame);
-    } else if (onComplete) {
-      onComplete();
-    }
-  }
-  requestAnimationFrame(frame);
+// === 简化动画函数 ===
+function smoothCenterTo(container, targetScroll) {
+  container.scrollLeft = targetScroll;
 }
+function staggerMatchCards() { /* no-op */ }
 
-// Enhanced scroll-to-center with GSAP-style easing
-function smoothCenterTo(container, targetScroll, duration = 450) {
-  const startScroll = container.scrollLeft;
-  const delta = targetScroll - startScroll;
-  if (Math.abs(delta) < 2) {
-    container.scrollLeft = targetScroll;
-    return;
-  }
-  gsapAnimate(
-    duration,
-    gsapEasing.power3,
-    (t) => { container.scrollLeft = startScroll + delta * t; },
-  );
-}
-
-// Enhanced match card stagger reveal
-function staggerMatchCards(container, baseDelay = 50) {
-  const cards = container.querySelectorAll(".match-card.reveal-delay-1, .match-card.reveal-delay-2, .match-card.reveal-delay-3, .match-card.reveal-delay-4, .match-card.reveal-delay-5");
-  cards.forEach((card, i) => {
-    card.style.animation = "none";
-    card.offsetHeight;
-    card.style.animation = `gsapReveal 500ms var(--ease-power3) ${baseDelay + i * 50}ms both`;
-  });
-}

@@ -316,19 +316,13 @@ button {
   overflow: visible;
 }
 
-.schedule.is-transitioning {
-  pointer-events: none;
-}
-
-.schedule.is-swiping .schedule-page.active {
-  opacity: var(--swipe-opacity, 1);
-  transform: scale(var(--swipe-scale, 1));
-  transition: none;
-}
-
 .schedule-page {
   width: 100%;
-  transform-origin: center top;
+  display: none;
+}
+
+.schedule-page.active {
+  display: block;
 }
 
 .date-label {
@@ -347,14 +341,6 @@ button {
   border-radius: 14px;
   background: var(--surface);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 520ms var(--ease), transform 520ms var(--ease), box-shadow 220ms var(--ease);
-}
-
-.match-card.visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .match-card:hover {
