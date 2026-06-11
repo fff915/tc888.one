@@ -1272,11 +1272,13 @@ function scheduleMarkupForDate(dateKey) {
     `;
   }
 
+  const hasMatches = day.matches && day.matches.length > 0;
+
   return `
     <div class="date-group">
-      ${day.matches.map((match, index) => matchCard(match, index, day)).join("")}
-      <div class="schedule-disclaimer">内容仅提供赛事数据分析整理，不做任何引导</div>
+      ${hasMatches ? day.matches.map((match, index) => matchCard(match, index, day)).join("") : ""}
     </div>
+    ${hasMatches ? '<div class="schedule-disclaimer">内容仅提供赛事数据分析整理，不做任何引导</div>' : ''}
   `;
 }
 
