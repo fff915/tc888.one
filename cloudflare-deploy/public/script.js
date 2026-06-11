@@ -1482,10 +1482,24 @@ function enableSchedulePagerSwipe() {
   Observer.create({
     target: window,
     type: "touch,pointer",
-    onLeft: () => goDate(dateIndex(selectedDateKey) + 1),
-    onRight: () => goDate(dateIndex(selectedDateKey) - 1),
-    dragMinimum: 45,
+    dragMinimum: 35,
     preventDefault: false,
+    onUp(self) {
+      const dx = self.deltaX;
+      const dir = dx > 0 ? -1 : 1;
+      const absDx = Math.abs(dx);
+      // Large swipe → skip more dates
+      let skip = 1;
+      if (absDx > 180) skip = 3;
+      else if (absDx > 90) skip = 2;
+
+      const dates = dateItems();
+      let targetIdx = dateIndex(selectedDateKey) + dir * skip;
+      if (targetIdx < 0) targetIdx = 0;
+      if (targetIdx >= dates.length) targetIdx = dates.length - 1;
+
+      goDate(targetIdx);
+    },
   });
 }
 
