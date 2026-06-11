@@ -1371,41 +1371,33 @@ button {
   overscroll-behavior-x: contain;
 }
 
-/* match-card reveal - CSS transition only, no auto-keyframes */
+/* match-card enhanced GSAP-style reveal */
 .match-card {
-  transition: transform 420ms var(--ease-power3),
-              opacity 420ms var(--ease-power3);
+  transition: transform 500ms var(--ease-power3),
+              opacity 500ms var(--ease-power3);
   will-change: transform, opacity;
 }
 
-/* 初始隐藏状态（由 JS 控制移除 class 来触发浮现） */
-.match-card.is-hidden {
+.match-card.reveal-delay-1 { animation: gsapReveal 500ms var(--ease-power3) 50ms both; }
+.match-card.reveal-delay-2 { animation: gsapReveal 500ms var(--ease-power3) 100ms both; }
+.match-card.reveal-delay-3 { animation: gsapReveal 500ms var(--ease-power3) 150ms both; }
+.match-card.reveal-delay-4 { animation: gsapReveal 500ms var(--ease-power3) 200ms both; }
+.match-card.reveal-delay-5 { animation: gsapReveal 500ms var(--ease-power3) 250ms both; }
+
+.match-card.anim-entrance {
   opacity: 0;
-  transform: translate3d(0, 10px, 0) scale(0.98);
+  transform: translate3d(0, 30px, 0);
 }
 
-/* 页面级淡入淡出（容器级，避免闪烁） */
-.schedule-page {
-  width: 100%;
-  transition: opacity 260ms var(--ease-power3);
-}
-
-.schedule-page.is-entering {
-  opacity: 0;
-}
-
-.schedule-page.is-leaving {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* 切换中防止点击穿透 */
-.schedule.is-transitioning {
-  pointer-events: none;
+@keyframes gsapReveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale3d(0.96, 0.96, 1);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
 }
 
 /* smooth body scroll */
