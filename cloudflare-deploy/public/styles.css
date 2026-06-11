@@ -184,8 +184,18 @@ button {
   display: block;
   width: 16px;
   height: 1.5px;
-  background: rgba(255, 255, 255, 0.5);
+  background: #FFBF1A;
   border-radius: 1px;
+  animation: hamburger-breath 2.4s ease-in-out infinite;
+}
+
+.hamburger-bars span:nth-child(2) {
+  animation-delay: 1.2s;
+}
+
+@keyframes hamburger-breath {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 }
 
 /* ---- Menu Dropdown (pinned to hamburger left side) ---- */
