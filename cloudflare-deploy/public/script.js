@@ -1317,69 +1317,51 @@ function goDate(idx) {
   if (isScheduleTransitioning || isAnyModalOpen()) return false;
 
   isScheduleTransitioning = true;
-  scheduleContent.classList.add("is-switching");
 
   window.setTimeout(() => {
     if (isScheduleTransitioning) {
       isScheduleTransitioning = false;
-      scheduleContent.classList.remove("is-switching");
     }
   }, 1800);
 
-  const oldPage = scheduleContent.querySelector(".schedule-page");
-  const oldCards = oldPage ? oldPage.querySelectorAll(".match-card") : scheduleContent.querySelectorAll(".match-card");
+  const dir = idx > dateIndex(selectedDateKey) ? -1 : 1;
+  const oldCards = scheduleContent.querySelectorAll(".match-card");
 
-  // 更新选中状态
-  selectedDateKey = dates[idx].dateKey;
-  updateChips();
+  const tlOut = gsap.timeline({
+    onComplete() {
+      selectedDateKey = dates[idx].dateKey;
+      updateChips();
 
-  // 先生成新 page DOM，准备叠加
-  const pageHtml = pageHtmlForDate(selectedDateKey);
-  const tempWrap = document.createElement("div");
-  tempWrap.innerHTML = pageHtml;
-  const newPage = tempWrap.firstElementChild;
-  newPage.classList.add("switch-page-in");
-  hydrateTeamBadges(newPage);
-  preloadAdjacentSchedules(selectedDateKey);
+      // 直接生成新HTML，避免缓存元素被移除后无法重用
+      const pageHtml = pageHtmlForDate(selectedDateKey);
+  scheduleContent.innerHTML = pageHtml;
+  const page = scheduleContent.firstElementChild;
+      hydrateTeamBadges(page);
+      preloadAdjacentSchedules(selectedDateKey);
 
-  // 把新 page 插入到旧 page 后面（同一容器）
-  scheduleContent.appendChild(newPage);
+      const newCards = scheduleContent.querySelectorAll(".match-card");
+      gsap.set(newCards, { xPercent: dir * -60, opacity: 0 });
 
-  const newCards = newPage.querySelectorAll(".match-card");
-
-  // 准备新卡片的初始状态：透明度 0、微下移、微缩放
-  gsap.set(newCards, { y: 16, scale: 0.98, opacity: 0, transformOrigin: "center top" });
-
-  // 同时：旧卡片淡出，新卡片弹出
-  gsap.to(oldCards, {
-    opacity: 0,
-    y: -6,
-    scale: 0.98,
-    duration: 0.32,
-    ease: "power2.in",
-    stagger: 0.02,
+      gsap.timeline({
+        onComplete() {
+          isScheduleTransitioning = false;
+        },
+      }).to(newCards, {
+        xPercent: 0,
+        opacity: 1,
+        duration: 0.28,
+        ease: "power2.out",
+        stagger: 0.04,
+      });
+    },
   });
 
-  gsap.to(newCards, {
-    y: 0,
-    scale: 1,
-    opacity: 1,
-    duration: 0.42,
-    ease: "power2.out",
-    stagger: 0.04,
-    onComplete() {
-      // 动画完成：移除旧 page，移除切换 class，恢复新 page 为正常流
-      if (oldPage && oldPage.parentNode) oldPage.parentNode.removeChild(oldPage);
-      newPage.classList.remove("switch-page-in");
-      scheduleContent.classList.remove("is-switching");
-      // 清理内联 transform/opacity（gsap 会写成 style.transform）
-      newCards.forEach((c) => {
-        c.style.removeProperty("transform");
-        c.style.removeProperty("opacity");
-        c.style.removeProperty("transform-origin");
-      });
-      isScheduleTransitioning = false;
-    },
+  tlOut.to(oldCards, {
+    xPercent: dir * 60,
+    opacity: 0,
+    duration: 0.2,
+    ease: "power2.in",
+    stagger: 0.03,
   });
 
   return true;
