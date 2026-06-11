@@ -12,6 +12,8 @@ let scheduleDays = [];
 let selectedDateKey = "";
 let toastTimer;
 let isScheduleTransitioning = false;
+let isDateStripProgrammatic = false;
+let dateStripScrollTimer = 0;
 let entrancePlayed = false;
 let clickBlockUntil = 0;
 const imageCache = new Map();
@@ -236,10 +238,15 @@ function centerDateChip(dateKey, { behavior = "smooth" } = {}) {
 
   const targetLeft = Math.max(0, chip.offsetLeft - (dateStrip.clientWidth - chip.offsetWidth) / 2);
   if (behavior === "auto") {
+    isDateStripProgrammatic = true;
     dateStrip.scrollLeft = targetLeft;
+    clearTimeout(dateStripScrollTimer);
+    dateStripScrollTimer = window.setTimeout(() => { isDateStripProgrammatic = false; }, 100);
   } else {
-    // Match goDate card animation duration (~280ms) so chip and cards move in sync
+    isDateStripProgrammatic = true;
     smoothCenterTo(dateStrip, targetLeft, 280);
+    clearTimeout(dateStripScrollTimer);
+    dateStripScrollTimer = window.setTimeout(() => { isDateStripProgrammatic = false; }, 320);
   }
 }
 
@@ -1292,9 +1299,12 @@ function updateChips() {
   const active = dateStrip.querySelector(".date-chip.active");
   if (active) {
     const targetLeft = Math.max(0,
-    active.offsetLeft - (dateStrip.clientWidth - active.offsetWidth) / 2
-  );
-    smoothCenterTo(dateStrip, targetLeft, 400);
+      active.offsetLeft - (dateStrip.clientWidth - active.offsetWidth) / 2
+    );
+    isDateStripProgrammatic = true;
+    smoothCenterTo(dateStrip, targetLeft, 280);
+    clearTimeout(dateStripScrollTimer);
+    dateStripScrollTimer = window.setTimeout(() => { isDateStripProgrammatic = false; }, 320);
   }
 }
 
@@ -1480,27 +1490,67 @@ document.addEventListener(
 
 function enableSchedulePagerSwipe() {
   Observer.create({
-    target: window,
+    target: scheduleContent,
     type: "touch,pointer",
-    dragMinimum: 35,
+    dragMinimum: 45,
     preventDefault: false,
-    onUp(self) {
-      const dx = self.deltaX;
-      const dir = dx > 0 ? -1 : 1;
-      const absDx = Math.abs(dx);
-      // Large swipe → skip more dates
+    onLeft(self) {
+      const absDx = Math.abs(self.deltaX);
       let skip = 1;
       if (absDx > 180) skip = 3;
       else if (absDx > 90) skip = 2;
-
       const dates = dateItems();
-      let targetIdx = dateIndex(selectedDateKey) + dir * skip;
-      if (targetIdx < 0) targetIdx = 0;
+      let targetIdx = dateIndex(selectedDateKey) + skip;
       if (targetIdx >= dates.length) targetIdx = dates.length - 1;
-
+      goDate(targetIdx);
+    },
+    onRight(self) {
+      const absDx = Math.abs(self.deltaX);
+      let skip = 1;
+      if (absDx > 180) skip = 3;
+      else if (absDx > 90) skip = 2;
+      const dates = dateItems();
+      let targetIdx = dateIndex(selectedDateKey) - skip;
+      if (targetIdx < 0) targetIdx = 0;
       goDate(targetIdx);
     },
   });
+}
+
+// Date strip navigation: when user drags the strip, detect the centered chip and switch dates
+function enableDateStripNavigation() {
+  dateStrip.addEventListener(
+    "scroll",
+    () => {
+      // Skip scroll events caused by programmatic animation
+      if (isDateStripProgrammatic || isScheduleTransitioning) return;
+      clearTimeout(dateStripScrollTimer);
+      dateStripScrollTimer = window.setTimeout(() => {
+        if (isDateStripProgrammatic || isScheduleTransitioning) return;
+        const chips = Array.from(dateStrip.querySelectorAll(".date-chip"));
+        if (!chips.length) return;
+        const stripCenter = dateStrip.scrollLeft + dateStrip.clientWidth / 2;
+        let closest = chips[0];
+        let closestDistance = Infinity;
+        for (const chip of chips) {
+          const chipCenter = chip.offsetLeft + chip.offsetWidth / 2;
+          const distance = Math.abs(chipCenter - stripCenter);
+          if (distance < closestDistance) {
+            closest = chip;
+            closestDistance = distance;
+          }
+        }
+        if (closest && closest.dataset.date && closest.dataset.date !== selectedDateKey) {
+          // Switch date without triggering another scroll animation from centerDateChip
+          const targetDateKey = closest.dataset.date;
+          const dates = dateItems();
+          const targetIdx = dates.findIndex((d) => d.dateKey === targetDateKey);
+          if (targetIdx >= 0) goDate(targetIdx);
+        }
+      }, 140);
+    },
+    { passive: true }
+  );
 }
 
 async function openImageModal(kind = "contact") {
@@ -1698,6 +1748,7 @@ async function patchScoresSilently() {
 }
 
 enableSchedulePagerSwipe();
+enableDateStripNavigation();
 pruneTeamLogoCache();
 loadSchedule();
 scheduleImagePreload();
