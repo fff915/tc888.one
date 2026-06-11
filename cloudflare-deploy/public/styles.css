@@ -329,6 +329,23 @@ button {
 .schedule-page {
   width: 100%;
   transform-origin: center top;
+  box-sizing: border-box;
+}
+
+.schedule.is-switching .schedule-page.switch-page-in {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.schedule.is-switching .schedule-page .match-card {
+  animation: none !important;
+  transition: none !important;
+  will-change: transform, opacity;
 }
 
 .date-label {
