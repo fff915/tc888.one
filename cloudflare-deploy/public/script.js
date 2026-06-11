@@ -1422,7 +1422,34 @@ function enableSchedulePagerSwipe() {
 
 // Date strip navigation: when user drags the strip, detect the centered chip and switch dates
 function enableDateStripNavigation() {
-  // 已删除滚动触发切换逻辑，仅保留 chip 点击即可
+  let startX = 0;
+  let tracking = false;
+  let locked = false;
+
+  dateStrip.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) return;
+    startX = e.clientX;
+    tracking = true;
+    locked = false;
+  });
+
+  dateStrip.addEventListener("pointermove", (e) => {
+    if (!tracking || locked) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) < 60) return;
+    const dates = dateItems();
+    const curIdx = dateIndex(selectedDateKey);
+    const targetIdx = dx < 0 ? curIdx + 1 : curIdx - 1;
+    if (targetIdx >= 0 && targetIdx < dates.length) {
+      goDate(targetIdx);
+      locked = true;
+      startX = e.clientX;
+      setTimeout(() => { locked = false; tracking = false; }, 120);
+    }
+  });
+
+  dateStrip.addEventListener("pointerup", () => { tracking = false; locked = false; });
+  dateStrip.addEventListener("pointercancel", () => { tracking = false; locked = false; });
 }
 
 async function openImageModal(kind = "contact") {
