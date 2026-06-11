@@ -1317,52 +1317,46 @@ function goDate(idx) {
   if (isScheduleTransitioning || isAnyModalOpen()) return false;
 
   isScheduleTransitioning = true;
+  scheduleContent.classList.add("is-transitioning");
 
+  const nextDateKey = dates[idx].dateKey;
+  const oldPage = scheduleContent.querySelector(".schedule-page");
+
+  // 1) 构建新页面 DOM（还没插入到可见内容中）
+  const newPageHtml = pageHtmlForDate(nextDateKey);
+  const temp = document.createElement("div");
+  temp.innerHTML = newPageHtml;
+  const newPage = temp.firstElementChild;
+  const newCards = newPage.querySelectorAll(".match-card");
+
+  // 新页面先 opacity=0（is-entering），卡片也 is-hidden
+  newPage.classList.add("is-entering");
+  newCards.forEach((card) => card.classList.add("is-hidden"));
+
+  // 2) 旧页面标记为 leaving，插入新页面并排
+  if (oldPage) oldPage.classList.add("is-leaving");
+  scheduleContent.appendChild(newPage);
+  hydrateTeamBadges(newPage);
+  preloadAdjacentSchedules(nextDateKey);
+
+  selectedDateKey = nextDateKey;
+  updateChips();
+
+  // 3) 下一帧：移除 is-entering 让容器淡入；卡片逐个弹出
+  requestAnimationFrame(() => {
+    newPage.classList.remove("is-entering");
+    newCards.forEach((card, i) => {
+      window.setTimeout(() => card.classList.remove("is-hidden"), 60 + i * 30);
+    });
+  });
+
+  // 4) 过渡结束后清理旧页面并释放锁定
+  const totalDuration = 260 + 60 + newCards.length * 30 + 420;
   window.setTimeout(() => {
-    if (isScheduleTransitioning) {
-      isScheduleTransitioning = false;
-    }
-  }, 1800);
-
-  const dir = idx > dateIndex(selectedDateKey) ? -1 : 1;
-  const oldCards = scheduleContent.querySelectorAll(".match-card");
-
-  const tlOut = gsap.timeline({
-    onComplete() {
-      selectedDateKey = dates[idx].dateKey;
-      updateChips();
-
-      // 直接生成新HTML，避免缓存元素被移除后无法重用
-      const pageHtml = pageHtmlForDate(selectedDateKey);
-  scheduleContent.innerHTML = pageHtml;
-  const page = scheduleContent.firstElementChild;
-      hydrateTeamBadges(page);
-      preloadAdjacentSchedules(selectedDateKey);
-
-      const newCards = scheduleContent.querySelectorAll(".match-card");
-      gsap.set(newCards, { xPercent: dir * -60, opacity: 0 });
-
-      gsap.timeline({
-        onComplete() {
-          isScheduleTransitioning = false;
-        },
-      }).to(newCards, {
-        xPercent: 0,
-        opacity: 1,
-        duration: 0.28,
-        ease: "power2.out",
-        stagger: 0.04,
-      });
-    },
-  });
-
-  tlOut.to(oldCards, {
-    xPercent: dir * 60,
-    opacity: 0,
-    duration: 0.2,
-    ease: "power2.in",
-    stagger: 0.03,
-  });
+    if (oldPage && oldPage.parentNode) oldPage.parentNode.removeChild(oldPage);
+    scheduleContent.classList.remove("is-transitioning");
+    isScheduleTransitioning = false;
+  }, totalDuration);
 
   return true;
 }
@@ -2282,12 +2276,13 @@ function smoothCenterTo(container, targetScroll, duration = 450) {
   );
 }
 
-// Enhanced match card stagger reveal
-function staggerMatchCards(container, baseDelay = 50) {
-  const cards = container.querySelectorAll(".match-card.reveal-delay-1, .match-card.reveal-delay-2, .match-card.reveal-delay-3, .match-card.reveal-delay-4, .match-card.reveal-delay-5");
-  cards.forEach((card, i) => {
-    card.style.animation = "none";
-    card.offsetHeight;
-    card.style.animation = `gsapReveal 500ms var(--ease-power3) ${baseDelay + i * 50}ms both`;
+// 柔和弹出：给卡片逐个移除 is-hidden 触发柔和弹出（CSS transition）
+function staggerMatchCards(container, baseDelay = 60) {
+  const cards = container.querySelectorAll(".match-card");
+  cards.forEach((card) => card.classList.add("is-hidden"));
+  requestAnimationFrame(() => {
+    cards.forEach((card, i) => {
+      window.setTimeout(() => card.classList.remove("is-hidden"), baseDelay + i * 30);
+    });
   });
 }
