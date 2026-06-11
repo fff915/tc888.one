@@ -1308,6 +1308,7 @@ function prefetchAdjacentDates(currentDateKey) {
 
 function updateChips() {
   setDateChipActive(selectedDateKey);
+  centerDateChip(selectedDateKey);
 }
 
 function goDate(idx) {
@@ -1376,7 +1377,7 @@ function bindDateChipClicks() {
   dateStrip.querySelectorAll(".date-chip").forEach((chip) => {
     chip.addEventListener("click", (event) => {
       event.preventDefault();
-      selectDate(chip.dataset.date, { scrollTop: true });
+      selectDate(chip.dataset.date, { scrollTop: false });
     });
   });
 }
