@@ -1,7 +1,7 @@
 // Excel 解析和赛程导入服务 - 从 server.py 迁移
 
 import { HEADER_ALIASES, TEAM_SEPARATORS } from '../data/constants';
-import { normalizeHeader, cellText, splitTeams, parseKickoff, dayPayload, scheduleDayForMatch, normalizeMatchNo, teamBadge, nowISO, normalizeTeam } from '../utils/helpers';
+import { normalizeHeader, cellText, splitTeams, parseKickoff, dayPayload, normalizeMatchNo, teamBadge, nowISO, normalizeTeam } from '../utils/helpers';
 import { loadAllMatches, upsertMatch, purgeOldMatches, type MatchRecord } from './db';
 import { triggerAiForNewMatches } from './ai';
 import { Env } from '../index';
@@ -80,7 +80,8 @@ export async function importSchedule(env: Env, records: Record<string, string>[]
       }
 
       const kickoff = parseKickoff(row.kickoff);
-      const day = dayPayload(scheduleDayForMatch(matchNo, kickoff));
+      // 严格使用 Excel 填入的开赛日期，不再用竞彩编号的周几重算日期
+      const day = dayPayload(kickoff);
       const existing = byNo[matchNo];
 
       const keepScore = existing && normalizeTeam(existing.home) === normalizeTeam(home) && normalizeTeam(existing.away) === normalizeTeam(away);
