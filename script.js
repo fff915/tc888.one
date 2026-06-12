@@ -28,6 +28,9 @@ const scheduleMarkupCache = new Map();
 const schedulePageCache = new Map();
 const dateOffsets = [-4, -3, -2, -1, 0, 1];
 const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const gestureIntentDistance = 8;
+const horizontalGestureRatio = 1.25;
+const dateSwitchDistance = 45;
 
 function localDateKey(date = new Date()) {
   const year = date.getFullYear();
@@ -1356,6 +1359,25 @@ function goDate(idx) {
   const dir = idx > dateIndex(selectedDateKey) ? -1 : 1;
   const oldCards = scheduleContent.querySelectorAll(".match-card");
 
+  function finishDateSwitchWithoutAnimation() {
+    selectedDateKey = dates[idx].dateKey;
+    updateChips();
+
+    const pageHtml = pageHtmlForDate(selectedDateKey);
+    scheduleContent.innerHTML = pageHtml;
+    const page = scheduleContent.firstElementChild;
+    hydrateTeamBadges(page);
+    markCardsVisible(page);
+    preloadAdjacentSchedules(selectedDateKey);
+    isScheduleTransitioning = false;
+    resetSwipeVisuals();
+  }
+
+  if (!window.gsap || typeof gsap.timeline !== "function") {
+    finishDateSwitchWithoutAnimation();
+    return true;
+  }
+
   const tlOut = gsap.timeline({
     onComplete() {
       selectedDateKey = dates[idx].dateKey;
@@ -1500,6 +1522,10 @@ function bindDateChipClicks() {
   dateStrip.querySelectorAll(".date-chip").forEach((chip) => {
     chip.addEventListener("click", (event) => {
       event.preventDefault();
+      if (dateStripSuppressClick) {
+        event.stopPropagation();
+        return;
+      }
       selectDate(chip.dataset.date, { animate: true, center: true, scrollTop: true });
     });
   });
@@ -1509,12 +1535,18 @@ function enableDateStripDrag() {
   const obs = {
     active: false,
     startX: 0,
+    startY: 0,
+    lastX: 0,
+    intent: "",
   };
 
   dateStrip.addEventListener("pointerdown", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
     obs.active = true;
     obs.startX = event.clientX;
+    obs.startY = event.clientY;
+    obs.lastX = event.clientX;
+    obs.intent = "";
     obs.hasMoved = false;
     dateStrip.classList.add("dragging");
   });
@@ -1522,12 +1554,26 @@ function enableDateStripDrag() {
   dateStrip.addEventListener("pointermove", (event) => {
     if (!obs.active) return;
     const dx = event.clientX - obs.startX;
-    if (!obs.hasMoved && Math.abs(dx) > 3) {
+    const dy = event.clientY - obs.startY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    if (!obs.intent) {
+      if (Math.max(absX, absY) < gestureIntentDistance) return;
+      obs.intent = absX > absY * horizontalGestureRatio ? "horizontal" : "vertical";
+      if (obs.intent === "vertical") {
+        obs.active = false;
+        dateStrip.classList.remove("dragging");
+        return;
+      }
       obs.hasMoved = true;
       try { dateStrip.setPointerCapture?.(event.pointerId); } catch (e) {}
     }
-    if (!obs.hasMoved) return;
-    dateStrip.scrollLeft -= event.movementX;
+
+    if (obs.intent !== "horizontal") return;
+    event.preventDefault();
+    dateStrip.scrollLeft -= event.clientX - obs.lastX;
+    obs.lastX = event.clientX;
   });
 
   function endObserver(event) {
@@ -1539,7 +1585,11 @@ function enableDateStripDrag() {
     if (!obs.hasMoved) return;
 
     const dx = event.clientX - obs.startX;
-    if (Math.abs(dx) < 45) return;
+    const dy = event.clientY - obs.startY;
+    if (Math.abs(dx) < dateSwitchDistance || Math.abs(dx) <= Math.abs(dy) * horizontalGestureRatio) {
+      window.setTimeout(snapDateStripToCenter, 0);
+      return;
+    }
 
     const dates = dateItems();
     const curIdx = dateIndex(selectedDateKey);
@@ -1595,14 +1645,133 @@ function resetSwipeVisuals() {
 }
 
 function enableSchedulePagerSwipe() {
-  Observer.create({
-    target: window,
-    type: "touch,pointer",
-    onLeft: () => goDate(dateIndex(selectedDateKey) + 1),
-    onRight: () => goDate(dateIndex(selectedDateKey) - 1),
-    dragMinimum: 45,
-    preventDefault: false,
+  const handlesTouchEvents = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  const swipe = {
+    active: false,
+    startX: 0,
+    startY: 0,
+    intent: "",
+    touchId: null,
+  };
+
+  function beginSwipe(x, y, target, touchId = null) {
+    if (!scheduleContent.contains(target) || dateTopBar.contains(target)) return;
+    if (isScheduleTransitioning || isAnyModalOpen()) return;
+    swipe.active = true;
+    swipe.startX = x;
+    swipe.startY = y;
+    swipe.intent = "";
+    swipe.touchId = touchId;
+  }
+
+  function updateSwipe(x, y, event) {
+    if (!swipe.active) return;
+    const dx = x - swipe.startX;
+    const dy = y - swipe.startY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    if (!swipe.intent) {
+      if (Math.max(absX, absY) < gestureIntentDistance) return;
+      swipe.intent = absX > absY * horizontalGestureRatio ? "horizontal" : "vertical";
+      if (swipe.intent === "vertical") {
+        swipe.active = false;
+        return;
+      }
+    }
+
+    if (swipe.intent !== "horizontal") return;
+    event?.preventDefault?.();
+    scheduleContent.classList.add("is-swiping");
+    const progress = Math.min(absX / 140, 1);
+    scheduleContent.style.setProperty("--swipe-opacity", String(1 - progress * 0.18));
+    scheduleContent.style.setProperty("--swipe-scale", String(1 - progress * 0.03));
+  }
+
+  function finishSwipe(x, y) {
+    if (!swipe.active) return;
+    const dx = x - swipe.startX;
+    const dy = y - swipe.startY;
+    const shouldSwitch =
+      swipe.intent === "horizontal" &&
+      Math.abs(dx) >= dateSwitchDistance &&
+      Math.abs(dx) > Math.abs(dy) * horizontalGestureRatio;
+
+    if (swipe.intent === "horizontal") {
+      clickBlockUntil = performance.now() + 600;
+    }
+
+    swipe.active = false;
+    swipe.touchId = null;
+
+    if (!shouldSwitch) {
+      resetSwipeVisuals();
+      return;
+    }
+
+    const currentIndex = dateIndex(selectedDateKey);
+    const moved = dx < 0
+      ? goDate(currentIndex + 1)
+      : goDate(currentIndex - 1);
+    if (!moved) resetSwipeVisuals();
+  }
+
+  function cancelSwipe() {
+    swipe.active = false;
+    swipe.intent = "";
+    swipe.touchId = null;
+    resetSwipeVisuals();
+  }
+
+  scheduleContent.addEventListener(
+    "touchstart",
+    (event) => {
+      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      beginSwipe(touch.clientX, touch.clientY, event.target, touch.identifier);
+    },
+    { passive: true },
+  );
+
+  scheduleContent.addEventListener(
+    "touchmove",
+    (event) => {
+      const touch = Array.from(event.touches).find((item) => item.identifier === swipe.touchId);
+      if (!touch) return;
+      updateSwipe(touch.clientX, touch.clientY, event);
+    },
+    { passive: false },
+  );
+
+  scheduleContent.addEventListener(
+    "touchend",
+    (event) => {
+      const touch = Array.from(event.changedTouches).find((item) => item.identifier === swipe.touchId);
+      if (!touch) return;
+      finishSwipe(touch.clientX, touch.clientY);
+    },
+    { passive: true },
+  );
+
+  scheduleContent.addEventListener("touchcancel", cancelSwipe, { passive: true });
+
+  scheduleContent.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "touch" && handlesTouchEvents) return;
+    if (event.button !== undefined && event.button !== 0) return;
+    beginSwipe(event.clientX, event.clientY, event.target);
   });
+
+  scheduleContent.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "touch" && handlesTouchEvents) return;
+    updateSwipe(event.clientX, event.clientY, event);
+  });
+
+  scheduleContent.addEventListener("pointerup", (event) => {
+    if (event.pointerType === "touch" && handlesTouchEvents) return;
+    finishSwipe(event.clientX, event.clientY);
+  });
+
+  scheduleContent.addEventListener("pointercancel", cancelSwipe);
 }
 
 async function openImageModal(kind = "contact") {
