@@ -86,6 +86,7 @@ DOUBAO_API_KEY = os.environ.get("DOUBAO_API_KEY", "")
 DOUBAO_ENDPOINT_ID = os.environ.get("DOUBAO_ENDPOINT_ID", "")
 LOCAL_TIMEZONE = "Asia/Shanghai"
 SCORE_POLL_MIN_REMAINING = 25
+DATE_STRIP_OFFSETS = (-4, -3, -2, -1, 0, 1)
 
 CLIENTS: list[queue.Queue[dict]] = []
 CLIENTS_LOCK = threading.Lock()
@@ -367,6 +368,10 @@ def today_key() -> str:
     return date.today().isoformat()
 
 
+def local_today() -> date:
+    return datetime.now(ZoneInfo(LOCAL_TIMEZONE)).date()
+
+
 def empty_api_usage() -> dict:
     return {
         "date": today_key(),
@@ -553,6 +558,9 @@ def ensure_match_fields(match: dict) -> dict:
     match.setdefault("lastUpdatedAt", match.get("updatedAt", ""))
     match.setdefault("apiUpdatedAt", "")
     match.setdefault("manualUpdatedAt", "")
+    if not match.get("kickoffDisplay") and match.get("kickoff"):
+        kickoff = kickoff_datetime(match)
+        match["kickoffDisplay"] = kickoff.strftime("%Y-%m-%d %H:%M") if kickoff else str(match.get("kickoff") or "")
     apply_effective_score_fields(match)
     return match
 
@@ -604,7 +612,7 @@ def day_payload(kickoff: datetime) -> dict:
 
 
 def schedule_day_for_match(match_no: str, kickoff: datetime) -> datetime:
-    """竞彩编号的周几决定赛事归属日，真实开赛日期仍保存在 kickoff 中。"""
+    """竞彩编号决定日期栏归属，Excel 开赛日期只保存在 kickoff 中。"""
     text = normalize_match_no(match_no)
     weekday_match = re.search(r"(周[一二三四五六日天])", text)
     if not weekday_match:
@@ -614,9 +622,9 @@ def schedule_day_for_match(match_no: str, kickoff: datetime) -> datetime:
     if target_weekday is None:
         return kickoff
 
-    kickoff_day = kickoff.date()
-    for offset in (0, -1, -2, -3, 1, 2, 3):
-        candidate = kickoff_day + timedelta(days=offset)
+    today = local_today()
+    for offset in DATE_STRIP_OFFSETS:
+        candidate = today + timedelta(days=offset)
         if candidate.weekday() == target_weekday:
             return datetime.combine(candidate, kickoff.time())
     return kickoff
@@ -923,7 +931,8 @@ def import_schedule(records: list[dict], data: dict, file_name: str) -> dict:
             if not match_no:
                 raise ValueError("竞彩编号为空")
             home, away = get_row_teams(row)
-            kickoff = parse_kickoff(row.get("kickoff"))
+            kickoff_display = cell_text(row.get("kickoff", ""))
+            kickoff = parse_kickoff(kickoff_display)
             day = day_payload(schedule_day_for_match(match_no, kickoff))
             existing = by_no.get(match_no)
             if existing:
@@ -939,6 +948,7 @@ def import_schedule(records: list[dict], data: dict, file_name: str) -> dict:
                 "homeBadge": team_badge(home),
                 "awayBadge": team_badge(away),
                 "kickoff": kickoff.isoformat(),
+                "kickoffDisplay": kickoff_display,
                 "dateKey": day["dateKey"],
                 "dateLabel": day["dateLabel"],
                 "dayNumber": day["dayNumber"],
@@ -1501,12 +1511,10 @@ def api_dates_for_matches(matches: list[dict], requested: str = "", *, active_on
     result: list[date] = []
     for match in matches:
         ensure_match_fields(match)
-        # 使用赛程表中的北京日期 dateKey，而非开球时间的日期
-        dk = match.get("dateKey") or ""
-        try:
-            match_date = date.fromisoformat(dk)
-        except (ValueError, TypeError):
+        kickoff = kickoff_datetime(match)
+        if not kickoff:
             continue
+        match_date = kickoff.date()
         # 已结束的比赛无需再查
         if match.get("matchStatus") in TERMINAL_STATUS:
             continue
@@ -1534,8 +1542,8 @@ def run_apifootball_update(data: dict, *, requested_date: str = "", force: bool 
             continue
         for local_match in local_matches:
             ensure_match_fields(local_match)
-            # 使用赛程表的北京日期 dateKey 匹配，而非开球时间
-            if local_match.get("dateKey") != api_date.isoformat():
+            kickoff = kickoff_datetime(local_match)
+            if not kickoff or kickoff.date() != api_date:
                 continue
             # 已结束的比赛跳过
             if local_match.get("matchStatus") in TERMINAL_STATUS:

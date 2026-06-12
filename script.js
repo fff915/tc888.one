@@ -381,6 +381,9 @@ function matchStatusHtml(match) {
 }
 
 function compactKickoffDateTime(match, day) {
+  const kickoffDisplay = String(match.kickoffDisplay || "").trim();
+  if (kickoffDisplay) return kickoffDisplay;
+
   if (match.kickoff) {
     const kickoff = new Date(match.kickoff);
     if (!Number.isNaN(kickoff.getTime())) {
