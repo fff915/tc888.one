@@ -4,6 +4,7 @@ function smoothCenterTo(container, targetScroll) {
 }
 
 const dateStrip = document.getElementById("dateStrip");
+const dateStripWrap = document.querySelector(".date-strip-wrap");
 const dateTopBar = document.getElementById("dateTopBar");
 const scheduleContent = document.getElementById("schedule-content");
 const toast = document.getElementById("toast");
@@ -212,13 +213,26 @@ function dayForDate(dateKey) {
   return scheduleDays.find((item) => item.dateKey === dateKey);
 }
 
+// Horizontal scroll is now JS-driven via transform. We measure where the active
+// chip is relative to the visible area, then translate .date-strip to center it.
 function centerDateChip(dateKey) {
   const chip = dateStrip.querySelector('.date-chip[data-date="' + CSS.escape(dateKey) + '"]');
-  if (!chip) return;
-  const targetLeft = Math.max(0,
-    chip.offsetLeft - (dateStrip.clientWidth - chip.offsetWidth) / 2
-  );
-  dateStrip.scrollLeft = targetLeft;
+  if (!chip || !dateStripWrap) return;
+  // Wait one frame so layout is final after adding new chips
+  requestAnimationFrame(() => {
+    const wrapRect = dateStripWrap.getBoundingClientRect();
+    const chipRect = chip.getBoundingClientRect();
+    const chipCenter = chipRect.left - wrapRect.left + chipRect.width / 2;
+    const targetCenter = wrapRect.width / 2;
+    const translateX = targetCenter - chipCenter;
+    // Clamp so we don't over-translate past the ends
+    const stripWidth = dateStrip.scrollWidth;
+    const maxTranslate = 0;
+    const minTranslate = Math.min(0, wrapRect.width - stripWidth);
+    const clamped = Math.max(minTranslate, Math.min(maxTranslate, translateX));
+    dateStrip.style.transition = "transform 220ms cubic-bezier(0.25, 0.1, 0.25, 1)";
+    dateStrip.style.transform = `translate3d(${clamped}px, 0, 0)`;
+  });
 }
 
 function setDateChipActive(dateKey) {

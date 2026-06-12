@@ -90,25 +90,21 @@ button {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   position: relative;
   overflow: hidden;
+  /* No overflow-x: auto - horizontal scroll is JS-driven via transform.
+     This prevents the nested-scroller trap that blocks vertical page scroll. */
+  touch-action: pan-y;
 }
 
 .date-strip {
   position: relative;
   display: flex;
-  width: 100%;
+  width: max-content;
   gap: 6px;
-  overflow-x: auto;
-  overflow-y: hidden;
   padding: 0;
-  scroll-snap-type: none;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
-}
-
-.date-strip.dragging {
-  cursor: grabbing;
-  scroll-snap-type: none;
+  /* Inner strip never scrolls itself; JS translates it. */
+  touch-action: pan-y;
+  will-change: transform;
+  transition: transform 220ms var(--ease);
 }
 
 .date-strip::before {
@@ -143,7 +139,7 @@ button {
   border-radius: 20px;
   background: transparent;
   border: 0;
-  touch-action: pan-x pan-y;
+  touch-action: pan-y;
   transition: all 0.25s;
 }
 
