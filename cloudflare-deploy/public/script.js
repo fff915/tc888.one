@@ -1402,58 +1402,115 @@ document.addEventListener(
 
 function enableSchedulePagerSwipe() {
   let startX = 0;
+  let startY = 0;
+  let startTime = 0;
   let tracking = false;
+  const HORIZONTAL_BIAS = 1.4;
+  const MIN_DISTANCE = 50;
+  const MAX_DURATION = 600;
 
-  scheduleContent.addEventListener("pointerdown", (e) => {
+  function onStart(e) {
     if (e.target.closest("button") || e.target.closest("a")) return;
-    startX = e.clientX;
+    const point = e.touches ? e.touches[0] : e;
+    if (!point) return;
+    startX = point.clientX;
+    startY = point.clientY;
+    startTime = performance.now();
     tracking = true;
-  });
+  }
 
-  scheduleContent.addEventListener("pointerup", (e) => {
+  function onEnd(e) {
     if (!tracking) return;
     tracking = false;
-    const dx = e.clientX - startX;
-    if (Math.abs(dx) < 50) return;
+    const point = e.changedTouches ? e.changedTouches[0] : e;
+    if (!point) return;
+    const dx = point.clientX - startX;
+    const dy = point.clientY - startY;
+    const dt = performance.now() - startTime;
+    if (Math.abs(dx) < MIN_DISTANCE) return;
+    if (Math.abs(dx) < Math.abs(dy) * HORIZONTAL_BIAS) return;
+    if (dt > MAX_DURATION) return;
+
     const dates = dateItems();
     const curIdx = dateIndex(selectedDateKey);
     const targetIdx = dx < 0 ? curIdx + 1 : curIdx - 1;
     if (targetIdx >= 0 && targetIdx < dates.length) goDate(targetIdx);
-  });
+  }
 
+  // Passive touch listeners - vertical scroll is NEVER blocked
+  scheduleContent.addEventListener("touchstart", onStart, { passive: true });
+  scheduleContent.addEventListener("touchend", onEnd, { passive: true });
+  scheduleContent.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
+  // Mouse (desktop) handling
+  scheduleContent.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "mouse") return;
+    onStart(e);
+  });
+  scheduleContent.addEventListener("pointerup", (e) => {
+    if (e.pointerType !== "mouse") return;
+    onEnd(e);
+  });
   scheduleContent.addEventListener("pointercancel", () => { tracking = false; });
 }
 
-// Date strip navigation: when user drags the strip, detect the centered chip and switch dates
+// Date strip navigation: detect horizontal flick on the date strip to switch dates.
+// Uses touchstart + touchmove with passive: true so the browser still handles vertical scroll natively.
 function enableDateStripNavigation() {
   let startX = 0;
+  let startY = 0;
+  let startTime = 0;
   let tracking = false;
   let locked = false;
+  const HORIZONTAL_BIAS = 1.4; // |dx| must be > 1.4x |dy| to count as horizontal
+  const MIN_DISTANCE = 50;
+  const MAX_DURATION = 600;
 
-  dateStrip.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("button")) return;
-    startX = e.clientX;
+  function onStart(e) {
+    if (locked) return;
+    const point = e.touches ? e.touches[0] : e;
+    if (!point) return;
+    startX = point.clientX;
+    startY = point.clientY;
+    startTime = performance.now();
     tracking = true;
-    locked = false;
-  });
+  }
 
-  dateStrip.addEventListener("pointermove", (e) => {
-    if (!tracking || locked) return;
-    const dx = e.clientX - startX;
-    if (Math.abs(dx) < 60) return;
+  function onEnd(e) {
+    if (!tracking) return;
+    tracking = false;
+    const point = e.changedTouches ? e.changedTouches[0] : e;
+    if (!point) return;
+    const dx = point.clientX - startX;
+    const dy = point.clientY - startY;
+    const dt = performance.now() - startTime;
+    if (Math.abs(dx) < MIN_DISTANCE) return;
+    if (Math.abs(dx) < Math.abs(dy) * HORIZONTAL_BIAS) return;
+    if (dt > MAX_DURATION) return;
+
     const dates = dateItems();
     const curIdx = dateIndex(selectedDateKey);
     const targetIdx = dx < 0 ? curIdx + 1 : curIdx - 1;
     if (targetIdx >= 0 && targetIdx < dates.length) {
       goDate(targetIdx);
       locked = true;
-      startX = e.clientX;
-      setTimeout(() => { locked = false; tracking = false; }, 120);
+      setTimeout(() => { locked = false; }, 250);
     }
-  });
+  }
 
-  dateStrip.addEventListener("pointerup", () => { tracking = false; locked = false; });
-  dateStrip.addEventListener("pointercancel", () => { tracking = false; locked = false; });
+  // Use passive listeners with { passive: true } so vertical scroll is NEVER blocked.
+  dateStrip.addEventListener("touchstart", onStart, { passive: true });
+  dateStrip.addEventListener("touchend", onEnd, { passive: true });
+  dateStrip.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
+  // Pointer events only for mouse (desktop) - touch is handled above
+  dateStrip.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "mouse") return;
+    onStart(e);
+  });
+  dateStrip.addEventListener("pointerup", (e) => {
+    if (e.pointerType !== "mouse") return;
+    onEnd(e);
+  });
+  dateStrip.addEventListener("pointercancel", () => { tracking = false; });
 }
 
 async function openImageModal(kind = "contact") {
