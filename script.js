@@ -599,6 +599,34 @@ const teamNameAliases = Object.freeze({
 });
 
 const teamLogoExactUrls = Object.freeze({
+  墨西哥: ["/team-logos/mexico.svg"],
+  南非: ["/team-logos/south-africa.svg"],
+  韩国: ["/team-logos/south-korea.svg"],
+  捷克: ["/team-logos/czech.svg"],
+  加拿大: ["/team-logos/canada.svg"],
+  波黑: ["/team-logos/bosnia.svg"],
+  美国: ["/team-logos/usa.svg"],
+  巴拉圭: ["/team-logos/paraguay.svg"],
+  卡塔尔: ["/team-logos/qatar.svg"],
+  瑞士: ["/team-logos/switzerland.svg"],
+  巴西: ["/team-logos/brazil.svg"],
+  摩洛哥: ["/team-logos/morocco.svg"],
+  海地: ["/team-logos/haiti.svg"],
+  苏格兰: ["/team-logos/scotland.svg"],
+  澳大利亚: ["/team-logos/australia.svg"],
+  土耳其: ["/team-logos/turkey.svg"],
+  坦佩雷山猫: ["/team-logos/ilves.png"],
+  TPS图尔库: ["/team-logos/tps-turku.png"],
+  国际图尔库: ["/team-logos/inter-turku.png"],
+  AC奥卢: ["/team-logos/ac-oulu.png"],
+  雅罗: ["/team-logos/ff-jaro.png"],
+  赫尔辛基: ["/team-logos/hjk-helsinki.png"],
+  瓦萨: ["/team-logos/vps-vaasa.png"],
+  库奥皮奥: ["/team-logos/kups.png"],
+  玛丽港: ["/team-logos/ifk-mariehamn.png"],
+  赫尔辛基火花: ["/team-logos/if-gnistan.png"],
+  拉赫蒂: ["/team-logos/fc-lahti.png"],
+  塞伊奈约基: ["/team-logos/sjk-seinajoki.png"],
   鹿岛鹿角: [
     "https://cdn.prod.website-files.com/68f550992570ca0322737dc2/68f6c666880ae81c57752ce1_kashima-antlers-footballlogos-org.svg",
   ],
@@ -787,13 +815,18 @@ const teamFlagCodes = Object.freeze({
 });
 
 const teamLogoResultCache = new Map();
-const teamLogoStorageKey = "qtcTeamLogoCache:v4";
+const teamLogoStorageKey = "qtcTeamLogoCache:v5";
 const teamLogoSuccessTtl = 30 * 24 * 60 * 60 * 1000;
 const teamLogoFailTtl = 3 * 24 * 60 * 60 * 1000;
 
 function teamLogoProxyUrl(source, retryCount = 0) {
   const retry = retryCount ? `&retry=${retryCount}` : "";
   return `/api/team-logo?src=${encodeURIComponent(source)}${retry}`;
+}
+
+function teamLogoImageUrl(source, retryCount = 0) {
+  if (!source) return "";
+  return source.startsWith("http") ? teamLogoProxyUrl(source, retryCount) : source;
 }
 
 function readTeamLogoStore() {
@@ -1156,7 +1189,7 @@ function teamBadgeHtml(teamName) {
   const cachedResult = cachedTeamLogo(teamName);
   const isCachedLogo = Boolean(cachedResult);
   const rawSrc = exactTeamLogoSources(teamName)[0] || "";
-  const directSrc = rawSrc.startsWith("http") ? `/api/team-logo?src=${encodeURIComponent(rawSrc)}` : rawSrc;
+  const directSrc = teamLogoImageUrl(rawSrc);
   const stateClass = isCachedLogo ? "is-loaded" : (directSrc ? "is-loaded" : "is-fallback");
   const srcAttribute = isCachedLogo ? ` src="${escapeHtml(cachedResult)}"` : (directSrc ? ` src="${escapeHtml(directSrc)}"` : "");
   return `
@@ -1206,7 +1239,7 @@ function hydrateTeamBadges(scope = scheduleContent) {
       badge.classList.remove("is-loaded");
       badge.classList.add("is-fallback");
       const url = sources[index];
-      image.src = url.startsWith("http") ? url : teamLogoProxyUrl(url, retryCount);
+      image.src = teamLogoImageUrl(url, retryCount);
     };
 
     image.addEventListener("load", () => {

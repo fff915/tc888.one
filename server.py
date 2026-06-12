@@ -68,6 +68,7 @@ TEAM_LOGO_ALLOWED_HOSTS = {
     "flagcdn.com",
     "purecatamphetamine.github.io",
     "cdn.prod.website-files.com",
+    "r2.thesportsdb.com",
     "logotyp.us",
     "logotypes.dev",
 }
