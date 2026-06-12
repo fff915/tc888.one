@@ -355,7 +355,22 @@ function matchStatusHtml(match) {
 
 function compactKickoffDateTime(match, day) {
   const kickoffDisplay = String(match.kickoffDisplay || "").trim();
-  if (kickoffDisplay) return kickoffDisplay;
+  if (kickoffDisplay) {
+    const normalized = kickoffDisplay.replace("：", ":");
+    const fullDate = normalized.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})/);
+    if (fullDate) {
+      const [, , month, date, hour, minute] = fullDate;
+      return `${Number(month)}-${Number(date)} ${String(Number(hour)).padStart(2, "0")}:${minute}`;
+    }
+
+    const shortDate = normalized.match(/^(\d{1,2})(?:-|月)(\d{1,2})(?:日)?\s+(\d{1,2}):(\d{2})/);
+    if (shortDate) {
+      const [, month, date, hour, minute] = shortDate;
+      return `${Number(month)}-${Number(date)} ${String(Number(hour)).padStart(2, "0")}:${minute}`;
+    }
+
+    return normalized;
+  }
 
   if (match.kickoff) {
     const kickoff = new Date(match.kickoff);
