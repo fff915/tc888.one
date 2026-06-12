@@ -820,6 +820,9 @@ function exactFlagLogoSources(teamName) {
   const lower = code.toLowerCase();
   const upper = code.toUpperCase();
   return [
+    `https://hatscripts.github.io/circle-flags/flags/${lower}.svg`,
+    `https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3/${lower}.svg`,
+    `https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/1x1/${lower}.svg`,
     `https://jsd.onmicrosoft.cn/npm/svg-country-flags@1.2.10/svg/${lower}.svg`,
     `https://flagcdn.com/${lower}.svg`,
     `https://purecatamphetamine.github.io/country-flag-icons/3x2/${upper}.svg`,
@@ -1098,7 +1101,7 @@ function teamBadgeHtml(teamName) {
   const srcAttribute = isCachedLogo ? ` src="${escapeHtml(cachedResult)}"` : (directSrc ? ` src="${escapeHtml(directSrc)}"` : "");
   return `
     <div class="team-avatar ${stateClass}" data-team="${escapeHtml(teamName)}" data-source-index="0" data-retry-count="0" data-logo-src="${escapeHtml(sources[0] || "")}" style="background:${color}22; box-shadow:0 0 16px ${color}18;">
-      <img alt="${escapeHtml(teamName)}队徽" loading="lazy" decoding="async" fetchpriority="low" referrerpolicy="no-referrer"${srcAttribute} />
+      <img alt="${escapeHtml(teamName)}队徽" loading="eager" decoding="async" referrerpolicy="no-referrer"${srcAttribute} />
       <span class="team-avatar-fallback" aria-hidden="true">${escapeHtml(teamInitial(teamName))}</span>
     </div>
   `;
@@ -1302,6 +1305,7 @@ function prefetchAdjacentDates(currentDateKey) {
       page.dataset.date = day.dateKey;
       page.innerHTML = scheduleMarkupForDate(day.dateKey);
       pageDomCache.set(day.dateKey, page);
+      hydrateTeamBadges(page);
     }
   });
 }
