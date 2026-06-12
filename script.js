@@ -1287,7 +1287,6 @@ function scheduleMarkupForDate(dateKey) {
   return `
     <div class="date-group">
       ${day.matches.map((match, index) => matchCard(match, index, day)).join("")}
-      <div class="schedule-disclaimer">内容仅提供赛事数据分析整理，不做任何引导</div>
     </div>
   `;
 }
@@ -1297,6 +1296,14 @@ function markCardsVisible(scope = scheduleContent) {
   requestAnimationFrame(() => {
     scope.querySelectorAll(".match-card").forEach((card) => card.classList.add("visible"));
     requestAnimationFrame(() => staggerMatchCards(scope));
+  });
+}
+
+function settleCardsVisible(scope = scheduleContent) {
+  hydrateTeamBadges(scope);
+  scope.querySelectorAll(".match-card").forEach((card) => {
+    card.classList.add("visible");
+    card.style.animation = "none";
   });
 }
 
@@ -1333,20 +1340,19 @@ function goDate(idx) {
   resetInteractionVisuals();
   preloadAdjacentSchedules(nextDateKey);
 
-  currentPage.style.setProperty("--page-exit-x", `${dir * -46}px`);
-  nextPage.style.setProperty("--page-enter-x", `${dir * 46}px`);
+  currentPage.style.setProperty("--page-exit-x", `${dir * -100}%`);
+  nextPage.style.setProperty("--page-enter-x", `${dir * 100}%`);
   currentPage.classList.add("is-exiting");
   nextPage.classList.add("is-entering");
+  settleCardsVisible(nextPage);
 
   scheduleContent.style.setProperty("--schedule-min-height", `${currentHeight}px`);
   scheduleContent.classList.add("is-transitioning");
   scheduleContent.replaceChildren(currentPage, nextPage);
-  hydrateTeamBadges(nextPage);
 
   requestAnimationFrame(() => {
     nextPage.classList.add("active");
     currentPage.classList.add("is-exiting-active");
-    markCardsVisible(nextPage);
   });
 
   window.setTimeout(() => {
