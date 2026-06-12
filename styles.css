@@ -30,13 +30,6 @@ html {
   overscroll-behavior-y: none;
 }
 
-html.is-horizontal-swiping,
-body.is-horizontal-swiping {
-  overflow: hidden !important;
-  overscroll-behavior: none !important;
-  touch-action: none;
-}
-
 body {
   min-width: 0;
   min-height: 100vh;
@@ -103,8 +96,9 @@ button {
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   cursor: grab;
-  touch-action: pan-x pan-y;
+  touch-action: pan-y;
 }
 
 .date-strip.dragging {
@@ -146,8 +140,8 @@ button {
   border: 0;
   scroll-snap-align: center;
   scroll-snap-stop: always;
-  touch-action: pan-x pan-y;
-  transition: all 0.25s;
+  touch-action: manipulation;
+  transition: color 180ms var(--ease), background 180ms var(--ease), transform 180ms var(--ease);
 }
 
 .date-edge-spacer {
@@ -307,21 +301,50 @@ button {
   padding: 0 12px;
   touch-action: pan-y;
   overflow: visible;
+  overscroll-behavior-x: contain;
 }
 
 .schedule.is-transitioning {
+  min-height: var(--schedule-min-height, 0);
   pointer-events: none;
 }
 
-.schedule.is-swiping .schedule-page.active {
-  opacity: var(--swipe-opacity, 1);
-  transform: scale(var(--swipe-scale, 1));
+.schedule.is-transitioning .schedule-page {
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  width: auto;
+  transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms var(--ease);
+}
+
+.schedule.is-dragging .schedule-page.active {
+  opacity: calc(1 - var(--swipe-progress, 0) * 0.16);
+  transform: translate3d(var(--swipe-x, 0), 0, 0) scale(calc(1 - var(--swipe-progress, 0) * 0.025));
   transition: none;
 }
 
 .schedule-page {
   width: 100%;
   transform-origin: center top;
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  will-change: transform, opacity;
+}
+
+.schedule-page.is-entering {
+  opacity: 0;
+  transform: translate3d(var(--page-enter-x, 46px), 0, 0) scale(0.985);
+}
+
+.schedule-page.is-entering.active {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.schedule-page.is-exiting-active {
+  opacity: 0;
+  transform: translate3d(var(--page-exit-x, -46px), 0, 0) scale(0.985);
 }
 
 .date-label {
