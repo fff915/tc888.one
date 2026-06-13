@@ -1974,8 +1974,7 @@ html {
   height: clamp(3.72rem, 23.8vw, 4.72rem);
   border-bottom-right-radius: var(--match-card-radius);
   background:
-    linear-gradient(128deg, transparent 0 61%, rgba(var(--ai-accent-rgb), 0.018) 62%, rgba(var(--ai-accent-rgb), 0.038) 100%),
-    radial-gradient(44% 48% at 99% 96%, rgba(var(--ai-accent-rgb), 0.052) 0%, rgba(var(--ai-accent-rgb), 0.02) 46%, transparent 76%),
+    linear-gradient(128deg, transparent 0 61%, rgba(var(--ai-accent-rgb), 0.012) 62%, rgba(var(--ai-accent-rgb), 0.02) 100%),
     linear-gradient(135deg, transparent 0 60%, rgba(255, 255, 255, 0.012) 61%, transparent 80%);
   box-shadow:
     inset -1px -1px 0 rgba(var(--ai-accent-rgb), 0.28);
@@ -2099,9 +2098,8 @@ html {
   border: 0;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 5% 50%, rgba(var(--ai-accent-rgb), 0.2), transparent 16%),
-    linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.42) 18%, rgba(var(--ai-accent-rgb), var(--ai-edge-alpha)) 54%, rgba(var(--ai-accent-rgb), 0.62) 80%, rgba(var(--ai-accent-rgb), 0));
-  box-shadow: 0 0 0.1rem rgba(var(--ai-accent-rgb), 0.34), 0 0 0.2rem rgba(var(--ai-accent-rgb), var(--ai-edge-soft-alpha));
+    linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.34) 18%, rgba(var(--ai-accent-rgb), 0.7) 54%, rgba(var(--ai-accent-rgb), 0.52) 80%, rgba(var(--ai-accent-rgb), 0));
+  box-shadow: 0 0 0.08rem rgba(var(--ai-accent-rgb), 0.2);
   opacity: 0.88;
   transform: rotate(-46deg) skewX(-4deg);
   transform-origin: left center;
@@ -2120,8 +2118,8 @@ html {
   width: clamp(4.05rem, 17.8vw, 5.25rem);
   height: 1px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.18) 34%, rgba(var(--ai-accent-rgb), 0.58) 100%);
-  box-shadow: 0 0 0.08rem rgba(var(--ai-accent-rgb), 0.18), 0 0 0.16rem rgba(var(--ai-accent-rgb), 0.08);
+  background: linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.12) 34%, rgba(var(--ai-accent-rgb), 0.42) 100%);
+  box-shadow: none;
   -webkit-clip-path: none;
   clip-path: none;
   opacity: 0.48;
@@ -2139,7 +2137,7 @@ html {
   min-height: clamp(2.72rem, 10.4vw, 3.18rem);
   border-radius: 0.95rem;
   color: rgba(var(--ai-accent-rgb), 0.78);
-  text-shadow: 0 0 0.18rem rgba(var(--ai-accent-rgb), 0.38), 0 0 0.36rem rgba(var(--ai-accent-rgb), 0.12);
+  text-shadow: none;
 }
 
 .match-card .ai-analysis-btn::before {
@@ -2148,8 +2146,8 @@ html {
   inset: 0.25rem 0.18rem 0.08rem;
   z-index: -1;
   border-radius: 0.95rem;
-  background: radial-gradient(circle at 58% 62%, rgba(var(--ai-accent-rgb), 0.052), transparent 64%);
-  opacity: 0.5;
+  background: none;
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -2157,7 +2155,7 @@ html {
   width: clamp(1.2rem, 4.72vw, 1.42rem);
   height: clamp(1.2rem, 4.72vw, 1.42rem);
   color: rgba(var(--ai-accent-rgb), 0.78);
-  filter: drop-shadow(0 0 0.16rem rgba(var(--ai-accent-rgb), 0.34));
+  filter: none;
 }
 
 .match-card .match-ai-text {
