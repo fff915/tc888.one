@@ -36,6 +36,13 @@ const supportedThemeKeys = new Set(["deep-blue", "tech-cyan", "green", "soft-lig
 let activeAiDetailMatch = null;
 let activeAiDetailDay = null;
 let menuResetTimer;
+let activeAiDetailView = "closed";
+let activeAiDetailReportIndex = -1;
+let aiDetailReturnScrollY = 0;
+let aiDetailListScrollTop = 0;
+let aiDetailCloseTimer = 0;
+let aiDetailViewTimer = 0;
+let aiDetailGesture = null;
 const dateOffsets = [-4, -3, -2, -1, 0, 1];
 const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const gestureIntentDistance = 8;
@@ -44,6 +51,10 @@ const dateSwitchDistance = 45;
 const swipeMaxPull = 92;
 const swipeVelocityCommit = 0.55;
 const pageTransitionMs = 340;
+const aiDetailTransitionMs = 220;
+const aiDetailEdgeSize = 24;
+const aiDetailEdgeReturnDistance = 72;
+const aiDetailEdgeAxisRatio = 1.35;
 
 function localDateKey(date = new Date()) {
   const year = date.getFullYear();
@@ -72,10 +83,47 @@ function nearbyDates() {
 }
 
 // 静态 AI 详情页使用本地 mock 数据，不调用真实 AI 接口，方便先把页面结构和主题效果稳定下来。
+// Static AI detail pages use local view models only; no remote AI report API is called.
+const aiText = Object.freeze({
+  win: "\u80dc",
+  draw: "\u5e73",
+  loss: "\u8d1f",
+  homeFallback: "\u4e3b\u961f",
+  awayFallback: "\u5ba2\u961f",
+  leagueFallback: "\u8d5b\u4e8b",
+  worldCup: "\u4e16\u754c\u676f",
+  friendly: "\u53cb\u8c0a\u8d5b",
+  international: "\u56fd\u9645\u8d5b",
+  brazil: "\u5df4\u897f",
+  morocco: "\u6469\u6d1b\u54e5",
+  qatar: "\u5361\u5854\u5c14",
+  swiss: "\u745e\u58eb",
+  haiti: "\u6d77\u5730",
+  scotland: "\u82cf\u683c\u5170",
+  mexico: "\u58a8\u897f\u54e5",
+  southAfrica: "\u5357\u975e",
+  doubao: "\u8c46\u5305",
+  aiSummaryPrefix: "AI\u9884\u6d4b\u6c47\u603b\uff1a",
+  overviewTitle: "AI\u5206\u6790\u603b\u89c8",
+  reportTitle: "AI\u8be6\u60c5\u62a5\u544a",
+  back: "\u8fd4\u56de",
+  modelListLabel: "AI\u6a21\u578b\u9884\u6d4b\u5217\u8868",
+  winLoss: "\u80dc\u8d1f",
+  fullScore: "\u5168\u573a\u6bd4\u5206",
+  halfScore: "\u534a\u573a\u6bd4\u5206",
+  openReport: "\u67e5\u770b\u62a5\u544a",
+  overviewDisclaimer: "* \u4ee5\u4e0a\u4e3a AI \u6a21\u578b\u9884\u6d4b\u7ed3\u679c\uff0c\u4ec5\u4f9b\u53c2\u8003",
+  detailAnalysis: "\u8be6\u7ec6\u5206\u6790",
+  detailPanelLabel: "AI\u8be6\u7ec6\u62a5\u544a",
+  detailDisclaimer: "AI \u5206\u6790\u57fa\u4e8e\u5386\u53f2\u6570\u636e\u4e0e\u6a21\u578b\u63a8\u7406\uff0c\u4ec5\u4f9b\u53c2\u8003\uff0c\u4e0d\u6784\u6210\u6295\u6ce8\u5efa\u8bae",
+  backSchedule: "\u8fd4\u56de\u8d5b\u7a0b",
+  backOverview: "\u8fd4\u56deAI\u5206\u6790\u603b\u89c8",
+});
+
 const aiResultLabelMap = Object.freeze({
-  win: "胜",
-  draw: "平",
-  loss: "负",
+  win: aiText.win,
+  draw: aiText.draw,
+  loss: aiText.loss,
 });
 
 const aiResultToneMap = Object.freeze({
@@ -87,10 +135,10 @@ const aiResultToneMap = Object.freeze({
 const aiModelBlueprints = Object.freeze([
   { modelName: "ChatGPT", result: "win", fullScore: "2-1", halfScore: "1-0" },
   { modelName: "Claude", result: "draw", fullScore: "1-1", halfScore: "0-0" },
-  { modelName: "Gemini", result: "win", fullScore: "2-0", halfScore: "1-0" },
   { modelName: "Grok", result: "loss", fullScore: "1-2", halfScore: "0-1" },
+  { modelName: "Gemini", result: "win", fullScore: "2-0", halfScore: "1-0" },
   { modelName: "DeepSeek", result: "win", fullScore: "3-1", halfScore: "1-1" },
-  { modelName: "豆包", result: "draw", fullScore: "2-2", halfScore: "1-1" },
+  { modelName: aiText.doubao, result: "draw", fullScore: "2-2", halfScore: "1-1" },
 ]);
 
 function kickoffIsoFor(dateKey, timeText) {
@@ -125,15 +173,15 @@ function mockScheduleDays() {
     {
       ...dayA,
       matches: [
-        mockMatch(dayA, `${dayAPrefix}006`, "世界杯", "06:00", "巴西", "摩洛哥"),
-        mockMatch(dayA, `${dayAPrefix}008`, "友谊赛", "09:30", "卡塔尔", "瑞士"),
-        mockMatch(dayA, `${dayAPrefix}009`, "国际赛", "12:00", "海地", "苏格兰"),
+        mockMatch(dayA, `${dayAPrefix}006`, aiText.worldCup, "06:00", aiText.brazil, aiText.morocco),
+        mockMatch(dayA, `${dayAPrefix}008`, aiText.friendly, "09:30", aiText.qatar, aiText.swiss),
+        mockMatch(dayA, `${dayAPrefix}009`, aiText.international, "12:00", aiText.haiti, aiText.scotland),
       ],
     },
     {
       ...dayB,
       matches: [
-        mockMatch(dayB, `${dayBPrefix}003`, "世界杯", "03:00", "墨西哥", "南非"),
+        mockMatch(dayB, `${dayBPrefix}003`, aiText.worldCup, "03:00", aiText.mexico, aiText.southAfrica),
       ],
     },
   ];
@@ -144,54 +192,51 @@ function hasAnyScheduleMatch(days) {
 }
 
 function aiReportsForMatch(match) {
-  if (Array.isArray(match?.aiReports) && match.aiReports.length) return match.aiReports;
-
-  const home = match?.home || "主队";
-  const away = match?.away || "客队";
-  const league = match?.league || "赛事";
+  const home = match?.home || aiText.homeFallback;
+  const away = match?.away || aiText.awayFallback;
+  const league = match?.league || aiText.leagueFallback;
 
   return aiModelBlueprints.map((item, index) => {
-    const resultLabel = aiResultLabelMap[item.result] || "平";
+    const resultLabel = aiResultLabelMap[item.result] || aiText.draw;
     const direction =
       item.result === "win"
-        ? `${home}不败倾向更强`
+        ? `${home}\u4e0d\u8d25\u503e\u5411\u66f4\u5f3a`
         : item.result === "loss"
-          ? `${away}反击效率更值得防范`
-          : "双方节奏接近，平局权重上升";
+          ? `${away}\u53cd\u51fb\u6548\u7387\u66f4\u503c\u5f97\u9632\u8303`
+          : "\u53cc\u65b9\u8282\u594f\u63a5\u8fd1\uff0c\u5e73\u5c40\u6743\u91cd\u4e0a\u5347";
 
     return {
       ...item,
-      summary: `${item.modelName} 倾向${resultLabel}，重点参考${league}赛程强度、攻守转换速度和临场阵容完整度。`,
+      summary: `${item.modelName} \u503e\u5411${resultLabel}\uff0c\u91cd\u70b9\u53c2\u8003${league}\u8d5b\u7a0b\u5f3a\u5ea6\u3001\u653b\u5b88\u8f6c\u6362\u901f\u5ea6\u548c\u4e34\u573a\u9635\u5bb9\u5b8c\u6574\u5ea6\u3002`,
       reportSections: [
         {
-          title: "A 核心判断",
-          body: `${direction}。模型把主队控球稳定性、客队防线回收质量和比赛节奏作为核心判断依据。`,
+          title: "A \u6838\u5fc3\u5224\u65ad",
+          body: `${direction}\u3002\u6a21\u578b\u628a\u4e3b\u961f\u63a7\u7403\u7a33\u5b9a\u6027\u3001\u5ba2\u961f\u9632\u7ebf\u56de\u6536\u8d28\u91cf\u548c\u6bd4\u8d5b\u8282\u594f\u4f5c\u4e3a\u6838\u5fc3\u5224\u65ad\u4f9d\u636e\u3002`,
         },
         {
-          title: "B 比分逻辑",
-          body: `全场比分参考 ${item.fullScore}。若前 30 分钟出现快速进球，比赛会更接近开放式对攻；若节奏偏慢，小比分概率提高。`,
+          title: "B \u6bd4\u5206\u903b\u8f91",
+          body: `\u5168\u573a\u6bd4\u5206\u53c2\u8003 ${item.fullScore}\u3002\u82e5\u524d 30 \u5206\u949f\u51fa\u73b0\u5feb\u901f\u8fdb\u7403\uff0c\u6bd4\u8d5b\u4f1a\u66f4\u63a5\u8fd1\u5f00\u653e\u5f0f\u5bf9\u653b\uff1b\u82e5\u8282\u594f\u504f\u6162\uff0c\u5c0f\u6bd4\u5206\u6982\u7387\u63d0\u9ad8\u3002`,
         },
         {
-          title: "C 半场逻辑",
-          body: `半场比分参考 ${item.halfScore}。上半场更看重双方试探阶段的压迫强度和定位球机会。`,
+          title: "C \u534a\u573a\u903b\u8f91",
+          body: `\u534a\u573a\u6bd4\u5206\u53c2\u8003 ${item.halfScore}\u3002\u4e0a\u534a\u573a\u66f4\u770b\u91cd\u53cc\u65b9\u8bd5\u63a2\u9636\u6bb5\u7684\u538b\u8feb\u5f3a\u5ea6\u548c\u5b9a\u4f4d\u7403\u673a\u4f1a\u3002`,
         },
         {
-          title: "D 关键数据依据",
-          body: `综合最近赛程密度、进攻三区触球、失误后的回防速度，以及主客身份带来的节奏差异。第 ${index + 1} 套模型权重偏向稳定性。`,
+          title: "D \u5173\u952e\u6570\u636e\u4f9d\u636e",
+          body: `\u7efc\u5408\u6700\u8fd1\u8d5b\u7a0b\u5bc6\u5ea6\u3001\u8fdb\u653b\u4e09\u533a\u89e6\u7403\u3001\u5931\u8bef\u540e\u7684\u56de\u9632\u901f\u5ea6\uff0c\u4ee5\u53ca\u4e3b\u5ba2\u8eab\u4efd\u5e26\u6765\u7684\u8282\u594f\u5dee\u5f02\u3002\u7b2c ${index + 1} \u5957\u6a21\u578b\u6743\u91cd\u504f\u5411\u7a33\u5b9a\u6027\u3002`,
         },
         {
-          title: "E 风险提示",
-          body: "赛前首发、天气、临场战术和红黄牌都会显著改变走势，任何单一模型结论都不应单独使用。",
+          title: "E \u98ce\u9669\u63d0\u793a",
+          body: "\u8d5b\u524d\u9996\u53d1\u3001\u5929\u6c14\u3001\u4e34\u573a\u6218\u672f\u548c\u7ea2\u9ec4\u724c\u90fd\u4f1a\u663e\u8457\u6539\u53d8\u8d70\u52bf\uff0c\u4efb\u4f55\u5355\u4e00\u6a21\u578b\u7ed3\u8bba\u90fd\u4e0d\u5e94\u5355\u72ec\u4f7f\u7528\u3002",
         },
         {
-          title: "F 赛前更新建议",
-          body: "开赛前 30 分钟重点复核首发名单、赔率波动和伤停更新，再决定是否调整比分和胜平负方向。",
+          title: "F \u8d5b\u524d\u66f4\u65b0\u5efa\u8bae",
+          body: "\u5f00\u8d5b\u524d 30 \u5206\u949f\u91cd\u70b9\u590d\u6838\u9996\u53d1\u540d\u5355\u3001\u8d54\u7387\u6ce2\u52a8\u548c\u4f24\u505c\u66f4\u65b0\uff0c\u518d\u51b3\u5b9a\u662f\u5426\u8c03\u6574\u6bd4\u5206\u548c\u80dc\u5e73\u8d1f\u65b9\u5411\u3002",
         },
       ],
     };
   });
 }
-
 function playEntrance() {
   if (entrancePlayed) return;
   entrancePlayed = true;
@@ -2736,7 +2781,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// ---- AI 分析详情页 ----
+// ---- New static AI analysis pages: no remote AI report API is used. ----
 function findMatchByNo(matchNo) {
   for (const day of scheduleDays) {
     const found = (day.matches || []).find((m) => m.matchNo === matchNo);
@@ -2746,162 +2791,348 @@ function findMatchByNo(matchNo) {
 }
 
 function aiResultLabel(result) {
-  return aiResultLabelMap[result] || "平";
+  return aiResultLabelMap[result] || aiText.draw;
 }
 
 function aiResultTone(result) {
   return aiResultToneMap[result] || "result-draw";
 }
 
-function aiDetailMatchCard(match, day) {
+function aiResultTeam(match, result) {
+  if (result === "win") return `${match?.home || aiText.homeFallback}${aiText.win}`;
+  if (result === "loss") return `${match?.away || aiText.awayFallback}${aiText.win}`;
+  return aiText.draw;
+}
+
+function aiModelIcon(modelName) {
+  if (modelName === "ChatGPT") return "GPT";
+  if (modelName === "Claude") return "CL";
+  if (modelName === "Grok") return "GK";
+  if (modelName === "Gemini") return "GM";
+  if (modelName === "DeepSeek") return "DS";
+  if (modelName === aiText.doubao) return "DB";
+  return "AI";
+}
+
+function aiOverviewPrediction(match, report) {
+  return `${aiText.aiSummaryPrefix}${aiResultTeam(match, report.result)} ${report.fullScore}`;
+}
+
+function aiDetailMatchCard(match, day, report) {
   const kickoff = compactKickoffDateTime(match, day);
+  const prediction = report ? aiOverviewPrediction(match, report) : "";
   return `
-    <article class="ai-detail-match-card">
-      <div class="ai-detail-match-meta">
-        <span>${renderMatchNo(match.matchNo)} · ${escapeHtml(match.league || "")}</span>
+    <article class="ai-match-hero">
+      <div class="ai-match-meta">
+        <span>${renderMatchNo(match.matchNo)} &middot; ${escapeHtml(match.league || "")}</span>
         <span>${escapeHtml(kickoff)}</span>
       </div>
-      <div class="ai-detail-teams">
-        <div class="ai-detail-team">
+      <div class="ai-match-teams">
+        <div class="ai-match-team ai-match-team-home">
           ${teamBadgeHtml(match.home)}
-          <strong>${escapeHtml(match.home || "主队")}</strong>
-          <span class="team-name-sm tag-home">主</span>
+          <strong>${escapeHtml(match.home || aiText.homeFallback)}</strong>
         </div>
-        <div class="ai-detail-vs">VS</div>
-        <div class="ai-detail-team">
+        <div class="ai-match-vs">
+          <span>VS</span>
+          ${prediction ? `<em>${escapeHtml(prediction)}</em>` : ""}
+        </div>
+        <div class="ai-match-team ai-match-team-away">
           ${teamBadgeHtml(match.away)}
-          <strong>${escapeHtml(match.away || "客队")}</strong>
-          <span class="team-name-sm tag-away">客</span>
+          <strong>${escapeHtml(match.away || aiText.awayFallback)}</strong>
         </div>
       </div>
     </article>
   `;
 }
 
-function openStaticAiDetail(matchNo) {
-  const result = findMatchByNo(matchNo);
-  if (!result || !aiDetailPage) return;
-  activeAiDetailMatch = result.match;
-  activeAiDetailDay = result.day;
-  renderAiReportList(activeAiDetailMatch, activeAiDetailDay);
+function aiPageBackButton(action, label) {
+  return `
+    <button class="ai-page-back" type="button" data-ai-action="${action}" aria-label="${escapeHtml(label)}">
+      <span class="ai-back-arrow" aria-hidden="true">&#8249;</span>
+      <strong>${aiText.back}</strong>
+    </button>
+  `;
+}
+
+function setAiDetailShell(html, view, mode = "enter") {
+  if (!aiDetailPage) return;
+  clearTimeout(aiDetailViewTimer);
+  aiDetailPage.innerHTML = html;
+  activeAiDetailView = view;
+  aiDetailPage.dataset.view = view;
+  const shell = aiDetailPage.querySelector(".ai-detail-shell");
+  if (shell) {
+    shell.classList.add(mode === "return" ? "ai-view-returning" : "ai-view-entering");
+    aiDetailViewTimer = window.setTimeout(() => {
+      shell.classList.remove("ai-view-entering", "ai-view-returning");
+    }, aiDetailTransitionMs + 40);
+  }
+  requestAnimationFrame(() => hydrateTeamBadges(aiDetailPage));
+}
+
+function renderAiOverview(match, day, options = {}) {
+  const reports = aiReportsForMatch(match);
+  const topReport = reports[0];
+  const html = `
+    <div class="ai-detail-shell" data-ai-view="overview">
+      <header class="ai-detail-topbar">
+        ${aiPageBackButton("close", aiText.backSchedule)}
+        <strong>${aiText.overviewTitle}</strong>
+        <span aria-hidden="true"></span>
+      </header>
+
+      ${aiDetailMatchCard(match, day, topReport)}
+
+      <section class="ai-overview-list" aria-label="${aiText.modelListLabel}">
+        ${reports.map((report, index) => `
+          <article class="ai-overview-card ${index === 0 ? "is-featured" : ""}">
+            <span class="ai-model-logo" aria-hidden="true">${escapeHtml(aiModelIcon(report.modelName))}</span>
+            <div class="ai-overview-body">
+              <div class="ai-overview-title">
+                <h3>${escapeHtml(report.modelName)}</h3>
+                <span class="ai-result-text ${aiResultTone(report.result)}">${escapeHtml(aiResultTeam(match, report.result))}</span>
+              </div>
+              <div class="ai-overview-metrics">
+                <span>${aiText.winLoss} <strong>${escapeHtml(aiResultLabel(report.result))}</strong></span>
+                <span>${aiText.fullScore} <strong>${escapeHtml(report.fullScore)}</strong></span>
+                <span>${aiText.halfScore} <strong>${escapeHtml(report.halfScore)}</strong></span>
+              </div>
+            </div>
+            <button class="ai-report-open" type="button" data-report-index="${index}" aria-label="${aiText.openReport} ${escapeHtml(report.modelName)}">
+              ${aiText.openReport} <span aria-hidden="true">&#8250;</span>
+            </button>
+          </article>
+        `).join("")}
+      </section>
+
+      <p class="ai-disclaimer">${aiText.overviewDisclaimer}</p>
+    </div>
+  `;
+  setAiDetailShell(html, "overview", options.mode || "enter");
+  if (options.restoreScroll) {
+    const restoreTop = Math.max(0, aiDetailListScrollTop);
+    aiDetailPage.scrollTop = restoreTop;
+    requestAnimationFrame(() => { aiDetailPage.scrollTop = restoreTop; });
+  } else {
+    aiDetailPage.scrollTop = 0;
+  }
+}
+
+function aiReportSections(match, report) {
+  const sourceSections = Array.isArray(report.reportSections) ? report.reportSections : [];
+  return [
+    {
+      title: `\u80dc\u8d1f\u5224\u65ad \u00b7 ${aiResultTeam(match, report.result)}`,
+      body: sourceSections[0]?.body || `${match.home}\u6574\u4f53\u8282\u594f\u548c\u524d\u573a\u6548\u7387\u66f4\u503c\u5f97\u5173\u6ce8\uff0c\u6a21\u578b\u503e\u5411${aiResultTeam(match, report.result)}\u3002`,
+    },
+    {
+      title: `\u9884\u6d4b\u6bd4\u5206 \u00b7 ${report.fullScore}`,
+      body: sourceSections[1]?.body || `\u5168\u573a\u6bd4\u5206\u53c2\u8003 ${report.fullScore}\uff0c\u82e5\u5f00\u5c40\u8282\u594f\u8f83\u5feb\uff0c\u6bd4\u8d5b\u4f1a\u66f4\u63a5\u8fd1\u5f00\u653e\u5f0f\u5bf9\u653b\u3002`,
+    },
+    {
+      title: `\u534a\u573a\u6bd4\u5206 \u00b7 ${report.halfScore}`,
+      body: sourceSections[2]?.body || `\u534a\u573a\u6bd4\u5206\u53c2\u8003 ${report.halfScore}\uff0c\u4e0a\u534a\u573a\u91cd\u70b9\u770b\u538b\u8feb\u5f3a\u5ea6\u548c\u5b9a\u4f4d\u7403\u673a\u4f1a\u3002`,
+    },
+    {
+      title: "\u6838\u5fc3\u7406\u7531",
+      body: sourceSections[3]?.body || report.summary,
+    },
+    {
+      title: "\u98ce\u9669\u63d0\u793a",
+      body: sourceSections[4]?.body || "\u8d5b\u4e8b\u5b58\u5728\u4e34\u573a\u9635\u5bb9\u3001\u6218\u672f\u548c\u8282\u594f\u53d8\u5316\uff0cAI \u5206\u6790\u4ec5\u4f9b\u53c2\u8003\u3002",
+    },
+  ];
+}
+
+function renderAiReportDetail(match, day, report, index = 0) {
+  activeAiDetailReportIndex = index;
+  const sections = aiReportSections(match, report);
+  const html = `
+    <div class="ai-detail-shell" data-ai-view="report">
+      <header class="ai-detail-topbar">
+        ${aiPageBackButton("overview", aiText.backOverview)}
+        <strong>${aiText.reportTitle}</strong>
+        <span aria-hidden="true"></span>
+      </header>
+
+      ${aiDetailMatchCard(match, day, report)}
+
+      <section class="ai-report-title-card">
+        <span class="ai-model-logo" aria-hidden="true">${escapeHtml(aiModelIcon(report.modelName))}</span>
+        <div>
+          <h2>${escapeHtml(report.modelName)} ${aiText.detailAnalysis}</h2>
+          <p>${escapeHtml(report.summary)}</p>
+        </div>
+      </section>
+
+      <section class="ai-report-panel" aria-label="${aiText.detailPanelLabel}">
+        ${sections.map((section, sectionIndex) => `
+          <article class="ai-report-row">
+            <span class="ai-report-index" aria-hidden="true">${sectionIndex + 1}</span>
+            <div>
+              <h3>${escapeHtml(section.title)}</h3>
+              <p>${escapeHtml(section.body)}</p>
+            </div>
+          </article>
+        `).join("")}
+      </section>
+
+      <p class="ai-disclaimer">${aiText.detailDisclaimer}</p>
+    </div>
+  `;
+  setAiDetailShell(html, "report", "enter");
+  aiDetailPage.scrollTop = 0;
+}
+
+function mountAiDetailPage(match, day) {
+  clearTimeout(aiDetailCloseTimer);
+  activeAiDetailMatch = match;
+  activeAiDetailDay = day;
+  activeAiDetailReportIndex = -1;
+  aiDetailListScrollTop = 0;
+  renderAiOverview(match, day);
+  aiDetailPage.classList.remove("is-closing");
   aiDetailPage.classList.add("active");
   aiDetailPage.setAttribute("aria-hidden", "false");
   appShell?.setAttribute("aria-hidden", "true");
   document.body.classList.add("ai-detail-open");
-  window.scrollTo({ top: 0, behavior: "auto" });
-  requestAnimationFrame(() => hydrateTeamBadges(aiDetailPage));
 }
 
-function closeStaticAiDetail() {
-  if (!aiDetailPage) return;
-  aiDetailPage.classList.remove("active");
+function openStaticAiDetail(matchNo) {
+  const result = findMatchByNo(matchNo);
+  if (!result || !aiDetailPage) return;
+  aiDetailReturnScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  mountAiDetailPage(result.match, result.day);
+  if (!history.state?.tc888AiView) {
+    history.pushState({ tc888AiView: "overview", matchNo }, "");
+  }
+}
+
+function finishCloseAiDetail() {
+  aiDetailPage.classList.remove("active", "is-closing");
   aiDetailPage.setAttribute("aria-hidden", "true");
+  aiDetailPage.innerHTML = "";
+  delete aiDetailPage.dataset.view;
   appShell?.setAttribute("aria-hidden", "false");
   document.body.classList.remove("ai-detail-open");
   activeAiDetailMatch = null;
   activeAiDetailDay = null;
+  activeAiDetailView = "closed";
+  activeAiDetailReportIndex = -1;
+  requestAnimationFrame(() => window.scrollTo({ top: aiDetailReturnScrollY, behavior: "auto" }));
 }
 
-function renderAiReportList(match, day) {
-  const reports = aiReportsForMatch(match);
-  aiDetailPage.innerHTML = `
-    <div class="ai-detail-shell" data-ai-view="list">
-      <header class="ai-detail-topbar">
-        <button class="ai-page-back" type="button" data-ai-action="close" aria-label="返回赛程">← 返回</button>
-        <strong>AI分析详情</strong>
-        <span aria-hidden="true"></span>
-      </header>
-
-      ${aiDetailMatchCard(match, day)}
-
-      <section class="ai-model-list" aria-label="模型分析列表">
-        ${reports.map((report, index) => `
-          <article class="ai-model-card">
-            <div class="ai-model-main">
-              <div>
-                <h3>${escapeHtml(report.modelName)}</h3>
-                <p>${escapeHtml(report.summary)}</p>
-              </div>
-              <span class="ai-result-badge ${aiResultTone(report.result)}">${aiResultLabel(report.result)}</span>
-            </div>
-            <div class="ai-score-grid">
-              <span>全场 <strong>${escapeHtml(report.fullScore)}</strong></span>
-              <span>半场 <strong>${escapeHtml(report.halfScore)}</strong></span>
-            </div>
-            <button class="ai-report-open" type="button" data-report-index="${index}">查看报告</button>
-          </article>
-        `).join("")}
-      </section>
-    </div>
-  `;
+function closeStaticAiDetail(options = {}) {
+  if (!aiDetailPage || !aiDetailPage.classList.contains("active")) return;
+  if (!options.fromHistory && history.state?.tc888AiView) {
+    history.back();
+    return;
+  }
+  clearTimeout(aiDetailCloseTimer);
+  aiDetailPage.classList.add("is-closing");
+  aiDetailCloseTimer = window.setTimeout(finishCloseAiDetail, aiDetailTransitionMs + 40);
 }
 
-function renderAiReportDetail(match, day, report) {
-  aiDetailPage.innerHTML = `
-    <div class="ai-detail-shell" data-ai-view="report">
-      <header class="ai-detail-topbar">
-        <button class="ai-page-back" type="button" data-ai-action="list" aria-label="返回AI分析列表">← 返回</button>
-        <strong>${escapeHtml(report.modelName)} 详细分析</strong>
-        <span aria-hidden="true"></span>
-      </header>
-
-      ${aiDetailMatchCard(match, day)}
-
-      <section class="ai-report-summary">
-        <div class="ai-model-main">
-          <div>
-            <h3>${escapeHtml(report.modelName)}</h3>
-            <p>${escapeHtml(report.summary)}</p>
-          </div>
-          <span class="ai-result-badge ${aiResultTone(report.result)}">${aiResultLabel(report.result)}</span>
-        </div>
-        <div class="ai-score-grid">
-          <span>全场 <strong>${escapeHtml(report.fullScore)}</strong></span>
-          <span>半场 <strong>${escapeHtml(report.halfScore)}</strong></span>
-        </div>
-      </section>
-
-      <section class="ai-report-sections" aria-label="详细报告">
-        ${(report.reportSections || []).map((section) => `
-          <article class="ai-report-section">
-            <h3>${escapeHtml(section.title)}</h3>
-            <p>${escapeHtml(section.body)}</p>
-          </article>
-        `).join("")}
-      </section>
-
-      <p class="ai-disclaimer">本分析基于赛前公开数据和模型推理生成，仅供参考，不构成投注建议。</p>
-    </div>
-  `;
-  requestAnimationFrame(() => hydrateTeamBadges(aiDetailPage));
+function returnToAiOverview(options = {}) {
+  if (!activeAiDetailMatch || !activeAiDetailDay) return;
+  if (!options.fromHistory && history.state?.tc888AiView === "report") {
+    history.back();
+    return;
+  }
+  renderAiOverview(activeAiDetailMatch, activeAiDetailDay, { mode: "return", restoreScroll: true });
 }
+
+function openAiReport(index) {
+  if (!activeAiDetailMatch || !activeAiDetailDay) return;
+  const reports = aiReportsForMatch(activeAiDetailMatch);
+  const report = reports[index];
+  if (!report) return;
+  aiDetailListScrollTop = aiDetailPage.scrollTop || 0;
+  renderAiReportDetail(activeAiDetailMatch, activeAiDetailDay, report, index);
+  if (history.state?.tc888AiView !== "report") {
+    history.pushState({ tc888AiView: "report", reportIndex: index }, "");
+  }
+}
+
+function handleAiUnifiedBack() {
+  if (!aiDetailPage?.classList.contains("active")) return;
+  if (activeAiDetailView === "report") {
+    returnToAiOverview();
+    return;
+  }
+  closeStaticAiDetail();
+}
+
+function handleAiPopState() {
+  if (!aiDetailPage?.classList.contains("active")) return;
+  if (activeAiDetailView === "report") {
+    returnToAiOverview({ fromHistory: true });
+    return;
+  }
+  closeStaticAiDetail({ fromHistory: true });
+}
+
+function setupAiEdgeReturnGesture() {
+  if (!aiDetailPage) return;
+  aiDetailPage.addEventListener("touchstart", (event) => {
+    if (!aiDetailPage.classList.contains("active") || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const fromLeft = touch.clientX <= aiDetailEdgeSize;
+    const fromRight = touch.clientX >= window.innerWidth - aiDetailEdgeSize;
+    if (!fromLeft && !fromRight) {
+      aiDetailGesture = null;
+      return;
+    }
+    aiDetailGesture = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      edge: fromLeft ? "left" : "right",
+      committed: false,
+    };
+  }, { passive: true });
+
+  aiDetailPage.addEventListener("touchmove", (event) => {
+    if (!aiDetailGesture || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const dx = touch.clientX - aiDetailGesture.startX;
+    const dy = touch.clientY - aiDetailGesture.startY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    const validDirection = aiDetailGesture.edge === "left" ? dx > 0 : dx < 0;
+    if (absX > 10 && absX > absY * aiDetailEdgeAxisRatio && validDirection) {
+      event.preventDefault();
+      aiDetailGesture.committed = absX >= aiDetailEdgeReturnDistance;
+    }
+  }, { passive: false });
+
+  aiDetailPage.addEventListener("touchend", () => {
+    if (aiDetailGesture?.committed) handleAiUnifiedBack();
+    aiDetailGesture = null;
+  }, { passive: true });
+}
+
+setupAiEdgeReturnGesture();
 
 aiDetailPage?.addEventListener("click", (event) => {
   const reportButton = event.target.closest(".ai-report-open");
-  if (reportButton && activeAiDetailMatch && activeAiDetailDay) {
-    const reportIndex = Number(reportButton.dataset.reportIndex || "0");
-    const report = aiReportsForMatch(activeAiDetailMatch)[reportIndex];
-    if (report) renderAiReportDetail(activeAiDetailMatch, activeAiDetailDay, report);
+  if (reportButton) {
+    openAiReport(Number(reportButton.dataset.reportIndex || "0"));
     return;
   }
 
   const actionButton = event.target.closest("[data-ai-action]");
   if (!actionButton) return;
   const action = actionButton.dataset.aiAction;
-  if (action === "close") {
-    closeStaticAiDetail();
-    return;
-  }
-  if (action === "list" && activeAiDetailMatch && activeAiDetailDay) {
-    renderAiReportList(activeAiDetailMatch, activeAiDetailDay);
-    requestAnimationFrame(() => hydrateTeamBadges(aiDetailPage));
+  if (action === "close" || action === "overview") {
+    handleAiUnifiedBack();
   }
 });
+
+window.addEventListener("popstate", handleAiPopState);
 
 function openAiAnalysis(matchNo) {
   openStaticAiDetail(matchNo);
 }
-
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".ai-analysis-btn");
   if (!btn) return;

@@ -54,7 +54,6 @@ TEAM_ALIASES_FILE = DATA_DIR / "team_aliases.json"
 LEAGUE_ALIASES_FILE = DATA_DIR / "league_aliases.json"
 API_USAGE_FILE = DATA_DIR / "api_usage.json"
 API_LOG_FILE = DATA_DIR / "apifootball_api.log"
-AI_REPORTS_FILE = DATA_DIR / "ai_reports.json"
 TEAM_LOGO_CACHE_DIR = DATA_DIR / "team-logo-cache"
 DAILY_IMAGE_DIRS = {
     "draw": DAILY_DIR / "今日开奖图片放这里",
@@ -83,9 +82,6 @@ API_FOOTBALL_BASE_URL = "https://v3.football.api-sports.io"
 API_FOOTBALL_API_KEY = os.environ.get("API_FOOTBALL_API_KEY", "")
 API_DAILY_LIMIT = int(os.environ.get("API_DAILY_LIMIT", "100") or "100")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DOUBAO_API_KEY = os.environ.get("DOUBAO_API_KEY", "")
-DOUBAO_ENDPOINT_ID = os.environ.get("DOUBAO_ENDPOINT_ID", "")
 LOCAL_TIMEZONE = "Asia/Shanghai"
 SCORE_POLL_MIN_REMAINING = 25
 DATE_STRIP_OFFSETS = (-4, -3, -2, -1, 0, 1)
@@ -702,217 +698,6 @@ def purge_old_matches(data: dict) -> int:
         if date.fromisoformat(match["dateKey"]) >= cutoff
     ]
     return before - len(data["matches"])
-
-
-def load_ai_reports() -> dict:
-    if not AI_REPORTS_FILE.exists():
-        return {}
-    try:
-        return json.loads(AI_REPORTS_FILE.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
-
-def save_ai_reports(reports: dict) -> None:
-    AI_REPORTS_FILE.write_text(json.dumps(reports, ensure_ascii=False, indent=2), encoding="utf-8")
-
-def purge_old_ai_reports(reports: dict) -> dict:
-    cutoff = datetime.now(ZoneInfo(LOCAL_TIMEZONE)) - timedelta(days=8)
-    cutoff_str = cutoff.isoformat()
-    purged = 0
-    for match_no in list(reports.keys()):
-        entry = reports[match_no]
-        if isinstance(entry, dict):
-            ages = []
-            for ai in ("deepseek", "doubao"):
-                t = entry.get(ai, {}).get("generatedAt", "")
-                if t:
-                    ages.append(t)
-            if ages and all(a < cutoff_str for a in ages):
-                del reports[match_no]
-                purged += 1
-            else:
-                for ai in list(entry.keys()):
-                    t = entry[ai].get("generatedAt", "")
-                    if t and t < cutoff_str:
-                        del entry[ai]
-    return reports
-
-AI_PROMPT = """你是专业足球数据分析师。在报告中适当增加图标和彩色标题。请按照以下模板给出总共600字左右的分析报告：
-
-1. 两队的排名：如果是两支国家队之间，请分别写明主队和客队的FIFA排名；如果是联赛，请写明当前积分赛的排名。
-2. 两队近五场历史交锋战绩，并分析对战优劣势。
-3. 两支球队近十场比赛的胜负，并分析原因。
-4. 双方核心球员的伤病停赛情况，以及其他特殊因素。
-5. 务必给出具体的比分预测，和半场是否进球（可以多写几个），并给出具体原因。
-
-请表明自己使用的是哪一个大模型，并最后做出风险提示：赛事存在临场变数，AI分析仅数据参考，不构成投注建议；购彩有风险，理性娱乐、量力而行，未满18周岁禁止购彩。"""
-
-def build_ai_match_context(match: dict) -> str:
-    ctx = []
-    ctx.append(f"主队: {match.get('home', '')}")
-    ctx.append(f"客队: {match.get('away', '')}")
-    ctx.append(f"赛事: {match.get('league', '')}")
-    kt = match.get("kickoff", "")
-    if kt:
-        ctx.append(f"开赛时间: {kt}")
-    full = match.get("fullScore") or ""
-    half = match.get("halfScore") or match.get("apiHalfTimeScore") or ""
-    if full:
-        ctx.append(f"全场比分: {full}")
-    if half:
-        ctx.append(f"半场比分: {half}")
-    return "\n".join(ctx)
-
-def call_deepseek(match_context: str) -> str:
-    if not DEEPSEEK_API_KEY:
-        raise ValueError("DeepSeek API Key 未配置")
-    body = {
-        "model": "deepseek-chat",
-        "messages": [
-            {"role": "system", "content": AI_PROMPT},
-            {"role": "user", "content": f"请分析以下比赛：\n{match_context}"}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 2000,
-        "stream": False,
-    }
-    body_bytes = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(
-        "https://api.deepseek.com/v1/chat/completions",
-        data=body_bytes,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        result = json.loads(resp.read().decode("utf-8"))
-    return result["choices"][0]["message"]["content"]
-
-def call_doubao(match_context: str) -> str:
-    if not DOUBAO_API_KEY:
-        raise ValueError("豆包 API Key 未配置")
-    if not DOUBAO_ENDPOINT_ID:
-        raise ValueError("豆包 Endpoint ID 未配置（请在 .env 中设置 DOUBAO_ENDPOINT_ID=ep-xxx）")
-    body = {
-        "model": DOUBAO_ENDPOINT_ID,
-        "messages": [
-            {"role": "system", "content": AI_PROMPT},
-            {"role": "user", "content": f"请分析以下比赛：\n{match_context}"}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 2000,
-        "stream": False,
-        "enable_search": True,
-    }
-    body_bytes = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(
-        "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
-        data=body_bytes,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {DOUBAO_API_KEY}",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-        return result["choices"][0]["message"]["content"]
-    except urllib.error.HTTPError as e:
-        body_text = ""
-        try:
-            body_text = e.read().decode("utf-8")[:500]
-        except Exception:
-            pass
-        raise ValueError(f"HTTP {e.code}: {body_text}")
-
-def generate_ai_report_for_match(match: dict) -> dict:
-    match_no = match.get("matchNo", "")
-    if not match_no:
-        return {"matchNo": match_no, "reports": {}}
-
-    ctx = build_ai_match_context(match)
-    reports: dict[str, dict] = {}
-    errors = []
-
-    if DEEPSEEK_API_KEY:
-        try:
-            content = call_deepseek(ctx)
-            reports["deepseek"] = {
-                "content": content,
-                "generatedAt": now_iso(),
-            }
-        except Exception as exc:
-            errors.append(f"DeepSeek: {exc}")
-    else:
-        errors.append("DeepSeek API Key 未配置")
-
-    if DOUBAO_API_KEY and DOUBAO_ENDPOINT_ID:
-        try:
-            content = call_doubao(ctx)
-            reports["doubao"] = {
-                "content": content,
-                "generatedAt": now_iso(),
-            }
-        except Exception as exc:
-            errors.append(f"豆包: {exc}")
-    elif not DOUBAO_API_KEY:
-        errors.append("豆包 API Key 未配置")
-    else:
-        errors.append("豆包 Endpoint ID 未配置")
-
-    return {"matchNo": match_no, "reports": reports, "errors": errors}
-
-def get_ai_report(match_no: str) -> dict:
-    match_no = normalize_match_no(match_no)
-    data = load_data()
-    match = next((m for m in data.get("matches", []) if normalize_match_no(m.get("matchNo", "")) == match_no), None)
-    if not match:
-        return {"matchNo": match_no, "reports": {}, "error": "比赛不存在"}
-
-    reports_db = load_ai_reports()
-    reports_db = purge_old_ai_reports(reports_db)
-    existing = reports_db.get(match_no, {})
-
-    result = {"matchNo": match_no, "reports": {}}
-    if existing.get("deepseek", {}).get("content"):
-        result["reports"]["deepseek"] = existing["deepseek"]
-    if existing.get("doubao", {}).get("content"):
-        result["reports"]["doubao"] = existing["doubao"]
-
-    if not result["reports"]:
-        result["pending"] = True
-    return result
-
-def trigger_ai_for_new_matches(data: dict) -> None:
-    if not DEEPSEEK_API_KEY and not (DOUBAO_API_KEY and DOUBAO_ENDPOINT_ID):
-        return
-    reports_db = load_ai_reports()
-    reports_db = purge_old_ai_reports(reports_db)
-    any_new = False
-    for match in data.get("matches", []):
-        mn = normalize_match_no(match.get("matchNo", ""))
-        if not mn:
-            continue
-        if mn not in reports_db:
-            safe_print(f"[ai] 正在为比赛 {mn} 生成 AI 分析报告...")
-            try:
-                result = generate_ai_report_for_match(match)
-                entry = {}
-                for ai in ("deepseek", "doubao"):
-                    if ai in result.get("reports", {}):
-                        entry[ai] = result["reports"][ai]
-                if entry:
-                    reports_db[mn] = entry
-                    any_new = True
-                    safe_print(f"[ai] {mn} 分析完成: {list(entry.keys())}")
-            except Exception as exc:
-                safe_print(f"[ai] {mn} 分析失败: {exc}")
-    if any_new:
-        save_ai_reports(reports_db)
-        safe_print(f"[ai] 本轮新增报告已保存")
 
 
 def match_no_sort_key(match_no: str) -> tuple[int, str]:
@@ -1789,7 +1574,6 @@ def process_upload_file(path: Path) -> None:
                     except Exception as exc:
                         result.setdefault("errors", []).append(f"API-Football 初次匹配失败：{exc}")
                 save_data(data)
-                threading.Thread(target=trigger_ai_for_new_matches, args=(data,), name="ai-trigger", daemon=True).start()
                 target_dir = FAILED_DIR if result.get("status") == "failed" else IMPORTED_DIR
                 moved_to = safe_move(path, target_dir)
                 result["storedAs"] = moved_to.name
@@ -1925,16 +1709,6 @@ class AppHandler(BaseHTTPRequestHandler):
 
         if route == "/api/team-logo":
             self.serve_team_logo(parsed.query)
-            return
-
-        if route == "/api/ai-report":
-            query = {key: values[-1] for key, values in parse_qs(parsed.query).items() if values}
-            match_no = query.get("matchNo", "")
-            if not match_no:
-                self.send_json({"ok": False, "message": "缺少 matchNo 参数"}, HTTPStatus.BAD_REQUEST)
-                return
-            result = get_ai_report(match_no)
-            self.send_json({"ok": True, **result})
             return
 
         if route == "/api/events":
