@@ -1918,7 +1918,7 @@ function matchCard(match, index, day) {
           <span class="team-name-sm tag-away">客</span>
         </div>
       </div>
-      <div class="match-card-footer" aria-hidden="false">
+      <div class="match-card-footer ai-corner" aria-hidden="false">
         <button class="ai-analysis-btn" type="button" data-match-no="${escapeHtml(match.matchNo)}" aria-label="AI分析">
           <span class="match-ai-mark" aria-hidden="true">
             <svg class="ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
