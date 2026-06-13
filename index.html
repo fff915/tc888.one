@@ -40,27 +40,74 @@
 
     <div id="menuBackdrop" class="menu-backdrop" aria-hidden="true"></div>
 
-    <div id="menuPopup" class="menu-dropdown" aria-hidden="true" role="menu" aria-label="赛事菜单">
-      <button class="menu-item" type="button" role="menuitem" data-action="ai-picks" data-label="AI精选">
-        <span class="menu-item-icon" aria-hidden="true">🤖</span>
-        <span class="menu-item-label">AI精选</span>
-      </button>
-      <button class="menu-item is-active" type="button" role="menuitem" data-action="all-matches" data-label="全部赛事" aria-current="page">
-        <span class="menu-item-icon" aria-hidden="true">⚽</span>
-        <span class="menu-item-label">全部赛事</span>
-      </button>
-      <button class="menu-item" type="button" role="menuitem" data-action="hot-matches" data-label="热门赛事">
-        <span class="menu-item-icon" aria-hidden="true">🔥</span>
-        <span class="menu-item-label">热门赛事</span>
-      </button>
-      <button class="menu-item" type="button" role="menuitem" data-action="data-center" data-label="数据中心">
-        <span class="menu-item-icon" aria-hidden="true">📊</span>
-        <span class="menu-item-label">数据中心</span>
-      </button>
-      <button class="menu-item" type="button" role="menuitem" data-action="settings" data-label="设置">
-        <span class="menu-item-icon" aria-hidden="true">⚙️</span>
-        <span class="menu-item-label">设置</span>
-      </button>
+    <div id="menuPopup" class="menu-dropdown" aria-hidden="true" role="menu" aria-label="赛事菜单" data-view="main">
+      <div class="menu-view-stage">
+        <div id="mainMenuPanel" class="menu-panel menu-panel-main is-active" data-panel="main">
+          <button class="menu-item" type="button" role="menuitem" data-action="ai-picks" data-label="AI精选">
+            <span class="menu-item-icon" aria-hidden="true">🤖</span>
+            <span class="menu-item-label">AI精选</span>
+          </button>
+          <button class="menu-item is-active" type="button" role="menuitem" data-action="all-matches" data-label="全部赛事" aria-current="page">
+            <span class="menu-item-icon" aria-hidden="true">⚽</span>
+            <span class="menu-item-label">全部赛事</span>
+          </button>
+          <button class="menu-item" type="button" role="menuitem" data-action="hot-matches" data-label="热门赛事">
+            <span class="menu-item-icon" aria-hidden="true">🔥</span>
+            <span class="menu-item-label">热门赛事</span>
+          </button>
+          <button class="menu-item" type="button" role="menuitem" data-action="data-center" data-label="数据中心">
+            <span class="menu-item-icon" aria-hidden="true">📊</span>
+            <span class="menu-item-label">数据中心</span>
+          </button>
+          <button class="menu-item menu-item-with-arrow" type="button" role="menuitem" data-action="theme-settings" data-label="主题设置" aria-haspopup="menu" aria-controls="themeMenuPanel">
+            <span class="menu-item-icon" aria-hidden="true">⚙️</span>
+            <span class="menu-item-label">主题设置</span>
+            <span class="menu-item-arrow" aria-hidden="true">›</span>
+          </button>
+        </div>
+
+        <div id="themeMenuPanel" class="menu-panel menu-panel-theme" data-panel="theme" aria-hidden="true">
+          <button id="themeBackButton" class="menu-back-button" type="button">
+            <span class="menu-back-arrow" aria-hidden="true">←</span>
+            <span>返回</span>
+          </button>
+          <div class="menu-subtitle">主题设置</div>
+          <div class="theme-option-list" role="menu" aria-label="主题选择">
+            <button class="theme-option is-selected" type="button" role="menuitemradio" aria-checked="true" data-theme="space-amber" data-label="深空蓝 + 琥珀金">
+              <span class="theme-swatches" aria-hidden="true">
+                <span class="theme-swatch theme-swatch-space"></span>
+                <span class="theme-swatch theme-swatch-amber"></span>
+              </span>
+              <span class="theme-option-label">深空蓝 + 琥珀金</span>
+              <span class="theme-check" aria-hidden="true">✓</span>
+            </button>
+            <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="slate-cyan" data-label="深蓝灰 + 冰川青">
+              <span class="theme-swatches" aria-hidden="true">
+                <span class="theme-swatch theme-swatch-slate"></span>
+                <span class="theme-swatch theme-swatch-cyan"></span>
+              </span>
+              <span class="theme-option-label">深蓝灰 + 冰川青</span>
+              <span class="theme-check" aria-hidden="true">✓</span>
+            </button>
+            <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="forest-amber" data-label="墨绿色 + 琥珀金">
+              <span class="theme-swatches" aria-hidden="true">
+                <span class="theme-swatch theme-swatch-forest"></span>
+                <span class="theme-swatch theme-swatch-amber"></span>
+              </span>
+              <span class="theme-option-label">墨绿色 + 琥珀金</span>
+              <span class="theme-check" aria-hidden="true">✓</span>
+            </button>
+            <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="soft-day" data-label="柔和白天模式">
+              <span class="theme-swatches" aria-hidden="true">
+                <span class="theme-swatch theme-swatch-day"></span>
+                <span class="theme-swatch theme-swatch-orange"></span>
+              </span>
+              <span class="theme-option-label">柔和白天模式</span>
+              <span class="theme-check" aria-hidden="true">✓</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="qrModal" class="qr-modal" aria-hidden="true">

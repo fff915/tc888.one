@@ -5,6 +5,10 @@ const toast = document.getElementById("toast");
 const menuButton = document.getElementById("menuButton");
 const menuPopup = document.getElementById("menuPopup");
 const menuBackdrop = document.getElementById("menuBackdrop");
+const menuViewStage = menuPopup?.querySelector(".menu-view-stage");
+const mainMenuPanel = document.getElementById("mainMenuPanel");
+const themeMenuPanel = document.getElementById("themeMenuPanel");
+const themeBackButton = document.getElementById("themeBackButton");
 const qrModal = document.getElementById("qrModal");
 const qrModalImage = document.getElementById("qrModalImage");
 const qrCopyButton = document.getElementById("qrCopyButton");
@@ -23,6 +27,8 @@ const imageMetaCacheTtl = 30 * 24 * 60 * 60 * 1000;
 let contactImageReady = null;
 const scheduleMarkupCache = new Map();
 const schedulePageCache = new Map();
+const themeChoiceStorageKey = "tc888ThemeChoice";
+let menuResetTimer;
 const dateOffsets = [-4, -3, -2, -1, 0, 1];
 const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const gestureIntentDistance = 8;
@@ -2282,6 +2288,22 @@ async function copyText(text) {
 }
 
 // === Hamburger Menu Dropdown ===
+function readStoredThemeChoice() {
+  try {
+    return localStorage.getItem(themeChoiceStorageKey) || "space-amber";
+  } catch (error) {
+    return "space-amber";
+  }
+}
+
+function storeThemeChoice(themeKey) {
+  try {
+    localStorage.setItem(themeChoiceStorageKey, themeKey);
+  } catch (error) {
+    // Ignore private-mode storage failures; the visible selection still updates.
+  }
+}
+
 function positionMenuDropdown() {
   const rect = menuButton.getBoundingClientRect();
   const viewportPadding = window.innerWidth <= 360 ? 12 : 16;
@@ -2291,9 +2313,44 @@ function positionMenuDropdown() {
   menuPopup.style.setProperty("--menu-right", `${right}px`);
 }
 
+function getMenuStageMaxHeight() {
+  const menuTop = parseFloat(menuPopup.style.getPropertyValue("--menu-top")) || 72;
+  const viewportLimit = window.innerHeight - menuTop - 16;
+  const seventyPercent = window.innerHeight * 0.7;
+  return Math.max(180, Math.floor(Math.min(viewportLimit, seventyPercent) - 16));
+}
+
+function updateMenuStageHeight() {
+  if (!menuViewStage) return;
+  const activePanel = menuPopup.querySelector(".menu-panel.is-active");
+  if (!activePanel) return;
+  const maxHeight = getMenuStageMaxHeight();
+  const nextHeight = Math.min(activePanel.scrollHeight, maxHeight);
+  menuPopup.style.setProperty("--menu-stage-max-height", `${maxHeight}px`);
+  menuPopup.style.setProperty("--menu-stage-height", `${nextHeight}px`);
+}
+
+function setMenuView(view) {
+  const isThemeView = view === "theme";
+  menuPopup.dataset.view = isThemeView ? "theme" : "main";
+  mainMenuPanel?.classList.toggle("is-active", !isThemeView);
+  themeMenuPanel?.classList.toggle("is-active", isThemeView);
+  mainMenuPanel?.setAttribute("aria-hidden", isThemeView ? "true" : "false");
+  themeMenuPanel?.setAttribute("aria-hidden", isThemeView ? "false" : "true");
+  if (menuViewStage) menuViewStage.scrollTop = 0;
+  updateMenuStageHeight();
+  requestAnimationFrame(updateMenuStageHeight);
+}
+
+function resetMenuView() {
+  setMenuView("main");
+}
+
 function openMenuPopup() {
   if (menuPopup.classList.contains("open")) return;
+  window.clearTimeout(menuResetTimer);
   positionMenuDropdown();
+  resetMenuView();
   menuPopup.classList.add("open");
   menuBackdrop?.classList.add("open");
   menuButton.classList.add("is-open");
@@ -2301,10 +2358,12 @@ function openMenuPopup() {
   menuPopup.setAttribute("aria-hidden", "false");
   menuBackdrop?.setAttribute("aria-hidden", "false");
   menuButton.setAttribute("aria-expanded", "true");
+  requestAnimationFrame(updateMenuStageHeight);
 }
 
 function closeMenuPopup() {
   if (!menuPopup.classList.contains("open")) return;
+  window.clearTimeout(menuResetTimer);
   menuPopup.classList.remove("open");
   menuBackdrop?.classList.remove("open");
   menuButton.classList.remove("is-open");
@@ -2312,6 +2371,9 @@ function closeMenuPopup() {
   menuPopup.setAttribute("aria-hidden", "true");
   menuBackdrop?.setAttribute("aria-hidden", "true");
   menuButton.setAttribute("aria-expanded", "false");
+  menuResetTimer = window.setTimeout(() => {
+    if (!menuPopup.classList.contains("open")) resetMenuView();
+  }, 180);
 }
 
 // 事件绑定
@@ -2357,15 +2419,28 @@ document.addEventListener("click", (e) => {
 
 // 窗口变化时重新定位
 const repositionMenuIfOpen = () => {
-  if (menuPopup.classList.contains("open")) positionMenuDropdown();
+  if (menuPopup.classList.contains("open")) {
+    positionMenuDropdown();
+    updateMenuStageHeight();
+  }
 };
 window.addEventListener("resize", repositionMenuIfOpen);
 window.addEventListener("scroll", repositionMenuIfOpen, { passive: true });
 
-menuPopup.querySelectorAll(".menu-item").forEach((btn) => {
+themeBackButton?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setMenuView("main");
+});
+
+menuPopup.querySelectorAll(".menu-panel-main .menu-item").forEach((btn) => {
   btn.addEventListener("click", () => {
+    const action = btn.dataset.action;
+    if (action === "theme-settings") {
+      setMenuView("theme");
+      return;
+    }
     const label = btn.dataset.label || btn.textContent.trim();
-    menuPopup.querySelectorAll(".menu-item").forEach((item) => {
+    menuPopup.querySelectorAll(".menu-panel-main .menu-item").forEach((item) => {
       item.classList.toggle("is-active", item === btn);
       if (item === btn) {
         item.setAttribute("aria-current", "page");
@@ -2377,6 +2452,37 @@ menuPopup.querySelectorAll(".menu-item").forEach((btn) => {
     showToast(label);
   });
 });
+
+function setSelectedTheme(themeKey, shouldToast = false) {
+  const themeOptions = menuPopup.querySelectorAll(".theme-option");
+  let selectedLabel = "";
+  let hasSelection = false;
+  themeOptions.forEach((option) => {
+    const isSelected = option.dataset.theme === themeKey;
+    option.classList.toggle("is-selected", isSelected);
+    option.setAttribute("aria-checked", isSelected ? "true" : "false");
+    if (isSelected) {
+      hasSelection = true;
+      selectedLabel = option.dataset.label || option.textContent.trim();
+    }
+  });
+  if (!hasSelection && themeKey !== "space-amber") {
+    setSelectedTheme("space-amber", shouldToast);
+    return;
+  }
+  storeThemeChoice(themeKey);
+  if (shouldToast && selectedLabel) showToast(selectedLabel);
+}
+
+menuPopup.querySelectorAll(".theme-option").forEach((btn) => {
+  btn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setSelectedTheme(btn.dataset.theme || "space-amber", true);
+    updateMenuStageHeight();
+  });
+});
+
+setSelectedTheme(readStoredThemeChoice());
 
 function connectEvents() {
   if (!("EventSource" in window)) {
