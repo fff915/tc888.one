@@ -4,6 +4,7 @@ const scheduleContent = document.getElementById("schedule-content");
 const toast = document.getElementById("toast");
 const menuButton = document.getElementById("menuButton");
 const menuPopup = document.getElementById("menuPopup");
+const menuBackdrop = document.getElementById("menuBackdrop");
 const qrModal = document.getElementById("qrModal");
 const qrModalImage = document.getElementById("qrModalImage");
 const qrCopyButton = document.getElementById("qrCopyButton");
@@ -2283,27 +2284,39 @@ async function copyText(text) {
 // === Hamburger Menu Dropdown ===
 function positionMenuDropdown() {
   const rect = menuButton.getBoundingClientRect();
-  menuPopup.style.top = (rect.bottom + 4) + "px";
-  menuPopup.style.right = (window.innerWidth - rect.right) + "px";
-  menuPopup.style.left = "auto";
-  menuPopup.style.bottom = "auto";
+  const viewportPadding = window.innerWidth <= 360 ? 12 : 16;
+  const right = Math.max(viewportPadding, window.innerWidth - rect.right);
+  const top = Math.max(12, rect.bottom + 8);
+  menuPopup.style.setProperty("--menu-top", `${top}px`);
+  menuPopup.style.setProperty("--menu-right", `${right}px`);
 }
 
 function openMenuPopup() {
   if (menuPopup.classList.contains("open")) return;
   positionMenuDropdown();
   menuPopup.classList.add("open");
+  menuBackdrop?.classList.add("open");
+  menuButton.classList.add("is-open");
+  dateTopBar.classList.add("menu-open");
   menuPopup.setAttribute("aria-hidden", "false");
+  menuBackdrop?.setAttribute("aria-hidden", "false");
+  menuButton.setAttribute("aria-expanded", "true");
 }
 
 function closeMenuPopup() {
   if (!menuPopup.classList.contains("open")) return;
   menuPopup.classList.remove("open");
+  menuBackdrop?.classList.remove("open");
+  menuButton.classList.remove("is-open");
+  dateTopBar.classList.remove("menu-open");
   menuPopup.setAttribute("aria-hidden", "true");
+  menuBackdrop?.setAttribute("aria-hidden", "true");
+  menuButton.setAttribute("aria-expanded", "false");
 }
 
 // 事件绑定
-menuButton.addEventListener("click", () => {
+menuButton.addEventListener("click", (event) => {
+  event.stopPropagation();
   if (menuPopup.classList.contains("open")) {
     closeMenuPopup();
   } else {
@@ -2329,28 +2342,39 @@ qrCopyButton?.addEventListener("click", async (event) => {
   }
 });
 
-// 点击遮罩空白处关闭
-menuPopup.addEventListener("click", (e) => {
-  if (e.target === menuPopup) closeMenuPopup();
-});
+menuBackdrop?.addEventListener("click", closeMenuPopup);
 
 // 点击页面其他位置关闭下拉
 document.addEventListener("click", (e) => {
-  if (menuPopup.classList.contains("open") && !menuButton.contains(e.target) && !menuPopup.contains(e.target)) {
+  if (
+    menuPopup.classList.contains("open") &&
+    !menuButton.contains(e.target) &&
+    !menuPopup.contains(e.target)
+  ) {
     closeMenuPopup();
   }
 });
 
-// 窗口 resize 时重新定位
-window.addEventListener("resize", () => {
+// 窗口变化时重新定位
+const repositionMenuIfOpen = () => {
   if (menuPopup.classList.contains("open")) positionMenuDropdown();
-});
+};
+window.addEventListener("resize", repositionMenuIfOpen);
+window.addEventListener("scroll", repositionMenuIfOpen, { passive: true });
 
 menuPopup.querySelectorAll(".menu-item").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const action = btn.dataset.action;
+    const label = btn.dataset.label || btn.textContent.trim();
+    menuPopup.querySelectorAll(".menu-item").forEach((item) => {
+      item.classList.toggle("is-active", item === btn);
+      if (item === btn) {
+        item.setAttribute("aria-current", "page");
+      } else {
+        item.removeAttribute("aria-current");
+      }
+    });
     closeMenuPopup();
-    showToast(`${action === "item5" ? "暂未开放" : `选项 ${action.replace("item", "")}`}`);
+    showToast(label);
   });
 });
 

@@ -20,8 +20,9 @@
         <div class="date-strip-wrap">
           <div id="dateStrip" class="date-strip" aria-label="比赛日期"></div>
         </div>
-        <button id="menuButton" class="hamburger-chip" type="button" aria-label="菜单">
-          <div class="hamburger-bars">
+        <button id="menuButton" class="hamburger-chip" type="button" aria-label="菜单" aria-expanded="false" aria-controls="menuPopup">
+          <div class="hamburger-bars" aria-hidden="true">
+            <span></span>
             <span></span>
             <span></span>
           </div>
@@ -37,21 +38,28 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite">数据已更新</div>
 
-    <div id="menuPopup" class="menu-dropdown" aria-hidden="true">
-      <button class="menu-item" type="button" data-action="item1">
-        <span>1</span>
+    <div id="menuBackdrop" class="menu-backdrop" aria-hidden="true"></div>
+
+    <div id="menuPopup" class="menu-dropdown" aria-hidden="true" role="menu" aria-label="赛事菜单">
+      <button class="menu-item" type="button" role="menuitem" data-action="ai-picks" data-label="AI精选">
+        <span class="menu-item-icon" aria-hidden="true">🤖</span>
+        <span class="menu-item-label">AI精选</span>
       </button>
-      <button class="menu-item" type="button" data-action="item2">
-        <span>2</span>
+      <button class="menu-item is-active" type="button" role="menuitem" data-action="all-matches" data-label="全部赛事" aria-current="page">
+        <span class="menu-item-icon" aria-hidden="true">⚽</span>
+        <span class="menu-item-label">全部赛事</span>
       </button>
-      <button class="menu-item" type="button" data-action="item3">
-        <span>3</span>
+      <button class="menu-item" type="button" role="menuitem" data-action="hot-matches" data-label="热门赛事">
+        <span class="menu-item-icon" aria-hidden="true">🔥</span>
+        <span class="menu-item-label">热门赛事</span>
       </button>
-      <button class="menu-item" type="button" data-action="item4">
-        <span>4</span>
+      <button class="menu-item" type="button" role="menuitem" data-action="data-center" data-label="数据中心">
+        <span class="menu-item-icon" aria-hidden="true">📊</span>
+        <span class="menu-item-label">数据中心</span>
       </button>
-      <button class="menu-item" type="button" data-action="item5">
-        <span>5（暂定）</span>
+      <button class="menu-item" type="button" role="menuitem" data-action="settings" data-label="设置">
+        <span class="menu-item-icon" aria-hidden="true">⚙️</span>
+        <span class="menu-item-label">设置</span>
       </button>
     </div>
 
