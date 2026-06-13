@@ -34,6 +34,7 @@ html[data-theme="deep-blue"] {
   --match-card-glow-soft: rgba(49, 86, 255, 0.16);
   --match-card-inner-glow: rgba(49, 86, 255, 0.18);
   --match-card-top-light: rgba(49, 86, 255, 0.2);
+  --match-card-depth-overlay: rgba(0, 0, 0, 0.16);
   --match-card-shadow: 0 0 0 1px rgba(49, 86, 255, 0.14), 0 0 28px rgba(49, 86, 255, 0.22), 0 18px 42px rgba(0, 0, 0, 0.34);
   /* 右下角 AI 发光变量：控制圆润斜切、AI 图标和局部光晕。 */
   --match-ai-accent: #f6b73c;
@@ -219,6 +220,7 @@ html[data-theme="soft-light"] {
   --match-card-glow-soft: rgba(245, 158, 11, 0.11);
   --match-card-inner-glow: rgba(245, 158, 11, 0.12);
   --match-card-top-light: rgba(245, 158, 11, 0.1);
+  --match-card-depth-overlay: rgba(255, 255, 255, 0.2);
   --match-card-shadow: 0 0 0 1px rgba(245, 158, 11, 0.1), 0 0 24px rgba(245, 158, 11, 0.14), 0 16px 34px rgba(15, 23, 42, 0.08);
   --match-ai-accent: #f59e0b;
   --match-ai-accent-rgb: 245, 158, 11;
@@ -1915,28 +1917,29 @@ html {
 /* B-2 rounded-cut match card: only the schedule cards use this override. */
 .match-card {
   --match-card-radius: clamp(1.26rem, 4.75vw, 1.52rem);
-  --card-edge-alpha: 0.34;
-  --card-edge-soft-alpha: 0.078;
-  --card-edge-inner-alpha: 0.038;
-  --ai-edge-alpha: 0.7;
-  --ai-edge-soft-alpha: 0.1;
+  --card-edge-alpha: 0.38;
+  --card-edge-soft-alpha: 0.052;
+  --card-edge-inner-alpha: 0.032;
+  --ai-edge-alpha: 0.78;
+  --ai-edge-soft-alpha: 0.12;
   gap: clamp(0.42rem, 1.9vw, 0.66rem);
-  min-height: clamp(7.72rem, 35vw, 8.92rem);
-  padding: clamp(0.78rem, 2.85vw, 0.94rem) clamp(0.94rem, 4vw, 1.24rem) clamp(0.94rem, 3.65vw, 1.26rem);
+  min-height: clamp(7.05rem, 32vw, 8.05rem);
+  padding: clamp(0.68rem, 2.45vw, 0.84rem) clamp(0.94rem, 4vw, 1.24rem) clamp(0.72rem, 3vw, 0.96rem);
   border: 1px solid rgba(var(--match-card-border-rgb), var(--card-edge-alpha));
   border-radius: var(--match-card-radius);
   color: var(--card-text-main);
   background:
-    radial-gradient(88% 62% at 8% -10%, rgba(var(--match-card-border-rgb), 0.088) 0%, rgba(var(--match-card-border-rgb), 0.032) 34%, transparent 55%),
-    radial-gradient(24% 32% at 101% 98%, rgba(var(--ai-accent-rgb), 0.026) 0%, rgba(var(--ai-accent-rgb), 0.012) 48%, transparent 76%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.03), transparent 33%),
+    linear-gradient(180deg, var(--match-card-depth-overlay), transparent 62%),
+    radial-gradient(82% 52% at 9% -8%, rgba(var(--match-card-border-rgb), 0.052) 0%, rgba(var(--match-card-border-rgb), 0.022) 34%, transparent 58%),
+    radial-gradient(20% 28% at 101% 96%, rgba(var(--ai-accent-rgb), 0.018) 0%, rgba(var(--ai-accent-rgb), 0.008) 48%, transparent 76%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.026), transparent 33%),
     linear-gradient(150deg, var(--match-card-bg) 0%, var(--card-bg) 56%, var(--match-card-bg-soft) 100%);
   box-shadow:
     0 0 0 1px rgba(var(--match-card-border-rgb), 0.038),
-    0 0 0.34rem rgba(var(--match-card-border-rgb), var(--card-edge-soft-alpha)),
+    0 0 0.22rem rgba(var(--match-card-border-rgb), var(--card-edge-soft-alpha)),
     0 0.72rem 1.45rem rgba(0, 0, 0, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.048),
-    inset 0 0 0.7rem rgba(var(--match-card-border-rgb), var(--card-edge-inner-alpha));
+    inset 0 0 0.52rem rgba(var(--match-card-border-rgb), var(--card-edge-inner-alpha));
   transition: transform 500ms var(--ease-power3), opacity 500ms var(--ease-power3);
 }
 
@@ -1946,17 +1949,17 @@ html {
   z-index: 0;
   inset: 0;
   border-radius: inherit;
-  border: 1px solid rgba(var(--match-card-border-rgb), 0.14);
+  border: 1px solid rgba(var(--match-card-border-rgb), 0.18);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.052), transparent 24%, transparent 78%, rgba(var(--match-card-border-rgb), 0.018)),
-    radial-gradient(64% 42% at 0 0, rgba(var(--match-card-border-rgb), 0.072), transparent 68%),
-    radial-gradient(44% 44% at 100% 0, rgba(var(--match-card-border-rgb), 0.04), transparent 70%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.046), rgba(var(--match-card-border-rgb), 0.035) 1px, transparent 20%, transparent 84%, rgba(var(--match-card-border-rgb), 0.008)),
+    radial-gradient(54% 34% at 0 0, rgba(var(--match-card-border-rgb), 0.048), transparent 70%),
+    radial-gradient(38% 34% at 100% 0, rgba(var(--match-card-border-rgb), 0.034), transparent 72%);
   box-shadow:
     inset 0 0.04rem 0 rgba(255, 255, 255, 0.055),
-    inset 0 0 0.36rem rgba(var(--match-card-border-rgb), 0.03),
-    0 0 0.24rem rgba(var(--match-card-border-rgb), 0.08);
+    inset 0 0 0.28rem rgba(var(--match-card-border-rgb), 0.024),
+    0 0 0.16rem rgba(var(--match-card-border-rgb), 0.056);
   filter: none;
-  opacity: 0.76;
+  opacity: 0.72;
   pointer-events: none;
 }
 
@@ -1967,8 +1970,8 @@ html {
   right: -1px;
   bottom: -1px;
   z-index: 1;
-  width: clamp(3.95rem, 17.5vw, 5rem);
-  height: clamp(3.45rem, 22.2vw, 4.46rem);
+  width: clamp(4.35rem, 19vw, 5.55rem);
+  height: clamp(3.72rem, 23.8vw, 4.72rem);
   border-bottom-right-radius: var(--match-card-radius);
   background:
     linear-gradient(128deg, transparent 0 61%, rgba(var(--ai-accent-rgb), 0.018) 62%, rgba(var(--ai-accent-rgb), 0.038) 100%),
@@ -1976,8 +1979,8 @@ html {
     linear-gradient(135deg, transparent 0 60%, rgba(255, 255, 255, 0.012) 61%, transparent 80%);
   box-shadow:
     inset -1px -1px 0 rgba(var(--ai-accent-rgb), 0.28);
-  -webkit-clip-path: polygon(31% 100%, 100% 100%, 100% 38%, 72% 60%);
-  clip-path: polygon(31% 100%, 100% 100%, 100% 38%, 72% 60%);
+  -webkit-clip-path: polygon(25% 100%, 100% 100%, 100% 35%, 72% 58%);
+  clip-path: polygon(25% 100%, 100% 100%, 100% 35%, 72% 58%);
   filter: none;
   opacity: 0.46;
   pointer-events: none;
@@ -1986,10 +1989,10 @@ html {
 .match-card:hover {
   box-shadow:
     0 0 0 1px rgba(var(--match-card-border-rgb), 0.038),
-    0 0 0.34rem rgba(var(--match-card-border-rgb), var(--card-edge-soft-alpha)),
+    0 0 0.22rem rgba(var(--match-card-border-rgb), var(--card-edge-soft-alpha)),
     0 0.72rem 1.45rem rgba(0, 0, 0, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.048),
-    inset 0 0 0.7rem rgba(var(--match-card-border-rgb), var(--card-edge-inner-alpha));
+    inset 0 0 0.52rem rgba(var(--match-card-border-rgb), var(--card-edge-inner-alpha));
 }
 
 .match-card-top,
@@ -2004,7 +2007,7 @@ html {
 
 .match-card .match-teams {
   grid-template-columns: minmax(0, 1fr) clamp(3.1rem, 11.4vw, 4rem) minmax(0, 1fr);
-  gap: clamp(0.42rem, 2.35vw, 0.76rem);
+  gap: clamp(0.34rem, 2.05vw, 0.68rem);
   padding: 0 clamp(2.15rem, 10vw, 3.1rem) 0 clamp(0.08rem, 1vw, 0.28rem);
 }
 
@@ -2017,17 +2020,17 @@ html {
 }
 
 .match-card .team-avatar {
-  width: clamp(2.38rem, 10.6vw, 2.86rem);
-  height: clamp(2.38rem, 10.6vw, 2.86rem);
-  flex-basis: clamp(2.38rem, 10.6vw, 2.86rem);
+  width: clamp(2.18rem, 9.8vw, 2.62rem);
+  height: clamp(2.18rem, 9.8vw, 2.62rem);
+  flex-basis: clamp(2.18rem, 9.8vw, 2.62rem);
 }
 
 .match-card .team {
-  gap: clamp(0.34rem, 1.55vw, 0.48rem);
+  gap: clamp(0.25rem, 1.22vw, 0.4rem);
 }
 
 .match-card .team-name {
-  font-size: clamp(1rem, 4.42vw, 1.28rem);
+  font-size: clamp(0.98rem, 4.22vw, 1.22rem);
 }
 
 .match-card .score.vs {
@@ -2077,7 +2080,7 @@ html {
   bottom: 0;
   z-index: 3;
   width: clamp(7.45rem, 40%, 9.35rem);
-  height: clamp(4.8rem, 50%, 6.4rem);
+  height: clamp(4.2rem, 47%, 5.8rem);
   margin: 0;
   pointer-events: none;
 }
@@ -2088,19 +2091,19 @@ html {
   position: absolute;
   top: auto;
   right: auto;
-  left: clamp(3.2rem, 15.4vw, 4.26rem);
+  left: clamp(3.68rem, 17.2vw, 4.72rem);
   bottom: clamp(0.05rem, 0.38vw, 0.12rem);
   z-index: 1;
-  width: clamp(4.28rem, 22.8vw, 5.56rem);
+  width: clamp(4.38rem, 23.2vw, 5.72rem);
   height: 1px;
   border: 0;
   border-radius: 999px;
   background:
     radial-gradient(circle at 5% 50%, rgba(var(--ai-accent-rgb), 0.2), transparent 16%),
     linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.42) 18%, rgba(var(--ai-accent-rgb), var(--ai-edge-alpha)) 54%, rgba(var(--ai-accent-rgb), 0.62) 80%, rgba(var(--ai-accent-rgb), 0));
-  box-shadow: 0 0 0.12rem rgba(var(--ai-accent-rgb), 0.34), 0 0 0.25rem rgba(var(--ai-accent-rgb), var(--ai-edge-soft-alpha));
-  opacity: 0.82;
-  transform: rotate(-44deg) skewX(-4deg);
+  box-shadow: 0 0 0.1rem rgba(var(--ai-accent-rgb), 0.34), 0 0 0.2rem rgba(var(--ai-accent-rgb), var(--ai-edge-soft-alpha));
+  opacity: 0.88;
+  transform: rotate(-46deg) skewX(-4deg);
   transform-origin: left center;
   pointer-events: none;
 }
@@ -2114,11 +2117,11 @@ html {
   right: 0;
   bottom: 0;
   z-index: 0;
-  width: clamp(3.65rem, 16.4vw, 4.95rem);
+  width: clamp(4.05rem, 17.8vw, 5.25rem);
   height: 1px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.16) 38%, rgba(var(--ai-accent-rgb), 0.46) 100%);
-  box-shadow: 0 0 0.1rem rgba(var(--ai-accent-rgb), 0.18), 0 0 0.2rem rgba(var(--ai-accent-rgb), 0.08);
+  background: linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.18) 34%, rgba(var(--ai-accent-rgb), 0.58) 100%);
+  box-shadow: 0 0 0.08rem rgba(var(--ai-accent-rgb), 0.18), 0 0 0.16rem rgba(var(--ai-accent-rgb), 0.08);
   -webkit-clip-path: none;
   clip-path: none;
   opacity: 0.48;
