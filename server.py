@@ -1612,6 +1612,7 @@ def scan_uploads_forever() -> None:
 
 
 ALLOWED_STATIC = {"index.html", "styles.css", "script.js"}
+AI_LOGO_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -1851,13 +1852,14 @@ class AppHandler(BaseHTTPRequestHandler):
         if route in {"", "/"}:
             route = "/index.html"
         relative = unquote(route).lstrip("/")
-        if relative.startswith("team-logos/"):
-            logo_root = (ROOT / "team-logos").resolve()
+        if relative.startswith("team-logos/") or relative.startswith("ai-logos/"):
+            logo_root = (ROOT / relative.split("/", 1)[0]).resolve()
             candidate = (ROOT / relative).resolve()
             if logo_root not in candidate.parents or not candidate.is_file():
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
-            if candidate.suffix.lower() not in TEAM_LOGO_EXTENSIONS:
+            allowed_ext = AI_LOGO_EXTENSIONS if relative.startswith("ai-logos/") else TEAM_LOGO_EXTENSIONS
+            if candidate.suffix.lower() not in allowed_ext:
                 self.send_error(HTTPStatus.FORBIDDEN)
                 return
         elif relative not in ALLOWED_STATIC:

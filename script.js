@@ -103,7 +103,6 @@ const aiText = Object.freeze({
   mexico: "\u58a8\u897f\u54e5",
   southAfrica: "\u5357\u975e",
   doubao: "\u8c46\u5305",
-  aiSummaryPrefix: "AI\u9884\u6d4b\u6c47\u603b\uff1a",
   overviewTitle: "AI\u5206\u6790\u603b\u89c8",
   reportTitle: "AI\u8be6\u60c5\u62a5\u544a",
   back: "\u8fd4\u56de",
@@ -2804,23 +2803,27 @@ function aiResultTeam(match, result) {
   return aiText.draw;
 }
 
-function aiModelIcon(modelName) {
-  if (modelName === "ChatGPT") return "GPT";
-  if (modelName === "Claude") return "CL";
-  if (modelName === "Grok") return "GK";
-  if (modelName === "Gemini") return "GM";
-  if (modelName === "DeepSeek") return "DS";
-  if (modelName === aiText.doubao) return "DB";
-  return "AI";
+function aiModelLogo(modelName) {
+  const logos = {
+    ChatGPT: "/ai-logos/chatgpt.svg",
+    Claude: "/ai-logos/claude.svg",
+    Grok: "/ai-logos/grok.svg",
+    Gemini: "/ai-logos/gemini.svg",
+    DeepSeek: "/ai-logos/deepseek.svg",
+  };
+  return logos[modelName] || (modelName === aiText.doubao ? "/ai-logos/doubao.svg" : "/ai-logos/ai.svg");
 }
 
-function aiOverviewPrediction(match, report) {
-  return `${aiText.aiSummaryPrefix}${aiResultTeam(match, report.result)} ${report.fullScore}`;
+function aiModelLogoHtml(modelName) {
+  return `
+    <span class="ai-model-logo" aria-hidden="true">
+      <img src="${escapeHtml(aiModelLogo(modelName))}" alt="" loading="lazy" decoding="async" />
+    </span>
+  `;
 }
 
-function aiDetailMatchCard(match, day, report) {
+function aiDetailMatchCard(match, day) {
   const kickoff = compactKickoffDateTime(match, day);
-  const prediction = report ? aiOverviewPrediction(match, report) : "";
   return `
     <article class="ai-match-hero">
       <div class="ai-match-meta">
@@ -2834,7 +2837,6 @@ function aiDetailMatchCard(match, day, report) {
         </div>
         <div class="ai-match-vs">
           <span>VS</span>
-          ${prediction ? `<em>${escapeHtml(prediction)}</em>` : ""}
         </div>
         <div class="ai-match-team ai-match-team-away">
           ${teamBadgeHtml(match.away)}
@@ -2872,7 +2874,6 @@ function setAiDetailShell(html, view, mode = "enter") {
 
 function renderAiOverview(match, day, options = {}) {
   const reports = aiReportsForMatch(match);
-  const topReport = reports[0];
   const html = `
     <div class="ai-detail-shell" data-ai-view="overview">
       <header class="ai-detail-topbar">
@@ -2881,12 +2882,12 @@ function renderAiOverview(match, day, options = {}) {
         <span aria-hidden="true"></span>
       </header>
 
-      ${aiDetailMatchCard(match, day, topReport)}
+      ${aiDetailMatchCard(match, day)}
 
       <section class="ai-overview-list" aria-label="${aiText.modelListLabel}">
         ${reports.map((report, index) => `
-          <article class="ai-overview-card ${index === 0 ? "is-featured" : ""}">
-            <span class="ai-model-logo" aria-hidden="true">${escapeHtml(aiModelIcon(report.modelName))}</span>
+          <article class="ai-overview-card">
+            ${aiModelLogoHtml(report.modelName)}
             <div class="ai-overview-body">
               <div class="ai-overview-title">
                 <h3>${escapeHtml(report.modelName)}</h3>
@@ -2955,10 +2956,10 @@ function renderAiReportDetail(match, day, report, index = 0) {
         <span aria-hidden="true"></span>
       </header>
 
-      ${aiDetailMatchCard(match, day, report)}
+      ${aiDetailMatchCard(match, day)}
 
       <section class="ai-report-title-card">
-        <span class="ai-model-logo" aria-hidden="true">${escapeHtml(aiModelIcon(report.modelName))}</span>
+        ${aiModelLogoHtml(report.modelName)}
         <div>
           <h2>${escapeHtml(report.modelName)} ${aiText.detailAnalysis}</h2>
           <p>${escapeHtml(report.summary)}</p>
