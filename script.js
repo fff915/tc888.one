@@ -2,6 +2,7 @@ const dateStrip = document.getElementById("dateStrip");
 const dateTopBar = document.getElementById("dateTopBar");
 const scheduleContent = document.getElementById("schedule-content");
 const toast = document.getElementById("toast");
+const menuAnchor = document.getElementById("menuAnchor");
 const menuButton = document.getElementById("menuButton");
 const menuPopup = document.getElementById("menuPopup");
 const menuBackdrop = document.getElementById("menuBackdrop");
@@ -2305,29 +2306,39 @@ function storeThemeChoice(themeKey) {
 }
 
 function positionMenuDropdown() {
-  const rect = menuButton.getBoundingClientRect();
+  const rect = menuAnchor.getBoundingClientRect();
+  const topBarRect = dateTopBar.getBoundingClientRect();
+  const topBarStyle = getComputedStyle(dateTopBar);
+  const topBarPaddingTop = parseFloat(topBarStyle.paddingTop) || 0;
+  const topBarPaddingRight = parseFloat(topBarStyle.paddingRight) || 0;
+  const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
   const viewportPadding = window.innerWidth <= 360 ? 12 : 16;
-  const right = Math.max(viewportPadding, window.innerWidth - rect.right);
-  const top = Math.max(12, rect.bottom + 8);
-  menuPopup.style.setProperty("--menu-top", `${top}px`);
-  menuPopup.style.setProperty("--menu-right", `${right}px`);
+  const collapsedSize = 3.2 * rootFontSize;
+  const panelWidth = Math.min(18 * rootFontSize, rect.right - viewportPadding);
+  const panelHeight = Math.min(22 * rootFontSize, window.innerHeight - rect.top - viewportPadding);
+  const right = Math.max(0, topBarRect.right - topBarPaddingRight - rect.right);
+  const top = Math.max(0, rect.top - topBarRect.top - topBarPaddingTop);
+  const scaleX = collapsedSize / panelWidth;
+  const scaleY = collapsedSize / panelHeight;
+  menuButton.style.setProperty("--menu-top", `${top}px`);
+  menuButton.style.setProperty("--menu-right", `${right}px`);
+  menuButton.style.setProperty("--menu-panel-width", `${panelWidth}px`);
+  menuButton.style.setProperty("--menu-panel-height", `${panelHeight}px`);
+  menuButton.style.setProperty("--menu-scale-x", scaleX.toFixed(5));
+  menuButton.style.setProperty("--menu-scale-y", scaleY.toFixed(5));
+  menuButton.style.setProperty("--menu-icon-scale-x", (1 / scaleX).toFixed(5));
+  menuButton.style.setProperty("--menu-icon-scale-y", (1 / scaleY).toFixed(5));
 }
 
 function getMenuStageMaxHeight() {
-  const menuTop = parseFloat(menuPopup.style.getPropertyValue("--menu-top")) || 72;
+  const menuTop = parseFloat(menuButton.style.getPropertyValue("--menu-top")) || 72;
   const viewportLimit = window.innerHeight - menuTop - 16;
   const seventyPercent = window.innerHeight * 0.7;
   return Math.max(180, Math.floor(Math.min(viewportLimit, seventyPercent) - 16));
 }
 
 function updateMenuStageHeight() {
-  if (!menuViewStage) return;
-  const activePanel = menuPopup.querySelector(".menu-panel.is-active");
-  if (!activePanel) return;
-  const maxHeight = getMenuStageMaxHeight();
-  const nextHeight = Math.min(activePanel.scrollHeight, maxHeight);
-  menuPopup.style.setProperty("--menu-stage-max-height", `${maxHeight}px`);
-  menuPopup.style.setProperty("--menu-stage-height", `${nextHeight}px`);
+  positionMenuDropdown();
 }
 
 function setMenuView(view) {
@@ -2351,13 +2362,14 @@ function openMenuPopup() {
   window.clearTimeout(menuResetTimer);
   positionMenuDropdown();
   resetMenuView();
+  menuButton.classList.add("is-open");
   menuPopup.classList.add("open");
   menuBackdrop?.classList.add("open");
-  menuButton.classList.add("is-open");
   dateTopBar.classList.add("menu-open");
   menuPopup.setAttribute("aria-hidden", "false");
   menuBackdrop?.setAttribute("aria-hidden", "false");
   menuButton.setAttribute("aria-expanded", "true");
+  menuButton.setAttribute("aria-label", "关闭菜单");
   requestAnimationFrame(updateMenuStageHeight);
 }
 
@@ -2371,6 +2383,7 @@ function closeMenuPopup() {
   menuPopup.setAttribute("aria-hidden", "true");
   menuBackdrop?.setAttribute("aria-hidden", "true");
   menuButton.setAttribute("aria-expanded", "false");
+  menuButton.setAttribute("aria-label", "菜单");
   menuResetTimer = window.setTimeout(() => {
     if (!menuPopup.classList.contains("open")) resetMenuView();
   }, 180);
@@ -2378,10 +2391,15 @@ function closeMenuPopup() {
 
 // 事件绑定
 menuButton.addEventListener("click", (event) => {
+  if (menuPopup.classList.contains("open")) return;
   event.stopPropagation();
-  if (menuPopup.classList.contains("open")) {
-    closeMenuPopup();
-  } else {
+  openMenuPopup();
+});
+
+menuButton.addEventListener("keydown", (event) => {
+  if (menuPopup.classList.contains("open")) return;
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
     openMenuPopup();
   }
 });
@@ -2406,12 +2424,18 @@ qrCopyButton?.addEventListener("click", async (event) => {
 
 menuBackdrop?.addEventListener("click", closeMenuPopup);
 
+menuPopup.querySelectorAll(".menu-close-button").forEach((btn) => {
+  btn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    closeMenuPopup();
+  });
+});
+
 // 点击页面其他位置关闭下拉
 document.addEventListener("click", (e) => {
   if (
     menuPopup.classList.contains("open") &&
-    !menuButton.contains(e.target) &&
-    !menuPopup.contains(e.target)
+    !menuButton.contains(e.target)
   ) {
     closeMenuPopup();
   }
@@ -2419,13 +2443,12 @@ document.addEventListener("click", (e) => {
 
 // 窗口变化时重新定位
 const repositionMenuIfOpen = () => {
-  if (menuPopup.classList.contains("open")) {
-    positionMenuDropdown();
-    updateMenuStageHeight();
-  }
+  positionMenuDropdown();
 };
 window.addEventListener("resize", repositionMenuIfOpen);
 window.addEventListener("scroll", repositionMenuIfOpen, { passive: true });
+positionMenuDropdown();
+requestAnimationFrame(positionMenuDropdown);
 
 themeBackButton?.addEventListener("click", (event) => {
   event.stopPropagation();
@@ -2433,7 +2456,8 @@ themeBackButton?.addEventListener("click", (event) => {
 });
 
 menuPopup.querySelectorAll(".menu-panel-main .menu-item").forEach((btn) => {
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", (event) => {
+    event.stopPropagation();
     const action = btn.dataset.action;
     if (action === "theme-settings") {
       setMenuView("theme");
