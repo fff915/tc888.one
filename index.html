@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="deep-blue">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
@@ -10,7 +10,16 @@
     <meta name="x5-fullscreen" content="true" />
     <meta name="x5-page-mode" content="app" />
     <title>tc888.one</title>
-    <link rel="stylesheet" href="/styles.css?v=unified-menu-20260613" />
+    <link rel="icon" href="data:," />
+    <script>
+      // 在 CSS 加载前应用主题，避免微信里出现短暂的默认主题闪烁。
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem("tc-theme") || "deep-blue";
+      } catch (error) {
+        document.documentElement.dataset.theme = "deep-blue";
+      }
+    </script>
+    <link rel="stylesheet" href="/styles.css?v=theme-ai-detail-20260613" />
   </head>
   <body ontouchstart="">
     <main id="main-content" class="app-shell">
@@ -69,7 +78,7 @@
                     <button class="menu-close-button" type="button" aria-label="关闭菜单">×</button>
                   </div>
                   <div class="theme-option-list" role="menu" aria-label="主题选择">
-                    <button class="theme-option is-selected" type="button" role="menuitemradio" aria-checked="true" data-theme="space-amber" data-label="深空蓝 + 琥珀金">
+                    <button class="theme-option is-selected" type="button" role="menuitemradio" aria-checked="true" data-theme="deep-blue" data-label="深空蓝 + 琥珀金">
                       <span class="theme-swatches" aria-hidden="true">
                         <span class="theme-swatch theme-swatch-space"></span>
                         <span class="theme-swatch theme-swatch-amber"></span>
@@ -77,7 +86,7 @@
                       <span class="theme-option-label">深空蓝 + 琥珀金</span>
                       <span class="theme-check" aria-hidden="true">✓</span>
                     </button>
-                    <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="slate-cyan" data-label="深蓝灰 + 冰川青">
+                    <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="tech-cyan" data-label="深蓝灰 + 冰川青">
                       <span class="theme-swatches" aria-hidden="true">
                         <span class="theme-swatch theme-swatch-slate"></span>
                         <span class="theme-swatch theme-swatch-cyan"></span>
@@ -85,7 +94,7 @@
                       <span class="theme-option-label">深蓝灰 + 冰川青</span>
                       <span class="theme-check" aria-hidden="true">✓</span>
                     </button>
-                    <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="forest-amber" data-label="墨绿色 + 琥珀金">
+                    <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="green" data-label="墨绿色 + 琥珀金">
                       <span class="theme-swatches" aria-hidden="true">
                         <span class="theme-swatch theme-swatch-forest"></span>
                         <span class="theme-swatch theme-swatch-amber"></span>
@@ -93,12 +102,12 @@
                       <span class="theme-option-label">墨绿色 + 琥珀金</span>
                       <span class="theme-check" aria-hidden="true">✓</span>
                     </button>
-                    <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="soft-day" data-label="柔和白天模式">
+                    <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="soft-light" data-label="柔和暖灰米色">
                       <span class="theme-swatches" aria-hidden="true">
                         <span class="theme-swatch theme-swatch-day"></span>
                         <span class="theme-swatch theme-swatch-orange"></span>
                       </span>
-                      <span class="theme-option-label">柔和白天模式</span>
+                      <span class="theme-option-label">柔和暖灰米色</span>
                       <span class="theme-check" aria-hidden="true">✓</span>
                     </button>
                   </div>
@@ -118,6 +127,8 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite">数据已更新</div>
 
+    <section id="aiDetailPage" class="ai-detail-page" aria-hidden="true"></section>
+
     <div id="menuBackdrop" class="menu-backdrop" aria-hidden="true"></div>
 
     <div id="qrModal" class="qr-modal" aria-hidden="true">
@@ -131,8 +142,6 @@
       </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Observer.min.js"></script>
-    <script src="/script.js?v=unified-menu-20260613"></script>
+    <script src="/script.js?v=theme-ai-detail-20260613"></script>
   </body>
 </html>

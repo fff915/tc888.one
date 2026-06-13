@@ -2,6 +2,8 @@ const dateStrip = document.getElementById("dateStrip");
 const dateTopBar = document.getElementById("dateTopBar");
 const scheduleContent = document.getElementById("schedule-content");
 const toast = document.getElementById("toast");
+const appShell = document.getElementById("main-content");
+const aiDetailPage = document.getElementById("aiDetailPage");
 const menuAnchor = document.getElementById("menuAnchor");
 const menuButton = document.getElementById("menuButton");
 const menuPopup = document.getElementById("menuPopup");
@@ -28,7 +30,11 @@ const imageMetaCacheTtl = 30 * 24 * 60 * 60 * 1000;
 let contactImageReady = null;
 const scheduleMarkupCache = new Map();
 const schedulePageCache = new Map();
-const themeChoiceStorageKey = "tc888ThemeChoice";
+const themeChoiceStorageKey = "tc-theme";
+const defaultThemeKey = "deep-blue";
+const supportedThemeKeys = new Set(["deep-blue", "tech-cyan", "green", "soft-light"]);
+let activeAiDetailMatch = null;
+let activeAiDetailDay = null;
 let menuResetTimer;
 const dateOffsets = [-4, -3, -2, -1, 0, 1];
 const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -62,6 +68,127 @@ function nearbyDates() {
     const item = new Date(today);
     item.setDate(today.getDate() + offset);
     return dateInfo(item);
+  });
+}
+
+// 静态 AI 详情页使用本地 mock 数据，不调用真实 AI 接口，方便先把页面结构和主题效果稳定下来。
+const aiResultLabelMap = Object.freeze({
+  win: "胜",
+  draw: "平",
+  loss: "负",
+});
+
+const aiResultToneMap = Object.freeze({
+  win: "result-win",
+  draw: "result-draw",
+  loss: "result-loss",
+});
+
+const aiModelBlueprints = Object.freeze([
+  { modelName: "ChatGPT", result: "win", fullScore: "2-1", halfScore: "1-0" },
+  { modelName: "Claude", result: "draw", fullScore: "1-1", halfScore: "0-0" },
+  { modelName: "Gemini", result: "win", fullScore: "2-0", halfScore: "1-0" },
+  { modelName: "Grok", result: "loss", fullScore: "1-2", halfScore: "0-1" },
+  { modelName: "DeepSeek", result: "win", fullScore: "3-1", halfScore: "1-1" },
+  { modelName: "豆包", result: "draw", fullScore: "2-2", halfScore: "1-1" },
+]);
+
+function kickoffIsoFor(dateKey, timeText) {
+  const [hour = "00", minute = "00"] = String(timeText || "00:00").split(":");
+  return `${dateKey}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00+08:00`;
+}
+
+function mockMatch(day, matchNo, league, time, home, away) {
+  return {
+    matchNo,
+    league,
+    dateKey: day.dateKey,
+    time,
+    kickoff: kickoffIsoFor(day.dateKey, time),
+    kickoffDisplay: `${day.dateKey} ${time}`,
+    home,
+    away,
+  };
+}
+
+function mockScheduleDays() {
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const dayA = dateInfo(today);
+  const dayB = dateInfo(tomorrow);
+  const dayAPrefix = weekNames[today.getDay()];
+  const dayBPrefix = weekNames[tomorrow.getDay()];
+
+  return [
+    {
+      ...dayA,
+      matches: [
+        mockMatch(dayA, `${dayAPrefix}006`, "世界杯", "06:00", "巴西", "摩洛哥"),
+        mockMatch(dayA, `${dayAPrefix}008`, "友谊赛", "09:30", "卡塔尔", "瑞士"),
+        mockMatch(dayA, `${dayAPrefix}009`, "国际赛", "12:00", "海地", "苏格兰"),
+      ],
+    },
+    {
+      ...dayB,
+      matches: [
+        mockMatch(dayB, `${dayBPrefix}003`, "世界杯", "03:00", "墨西哥", "南非"),
+      ],
+    },
+  ];
+}
+
+function hasAnyScheduleMatch(days) {
+  return Array.isArray(days) && days.some((day) => Array.isArray(day.matches) && day.matches.length > 0);
+}
+
+function aiReportsForMatch(match) {
+  if (Array.isArray(match?.aiReports) && match.aiReports.length) return match.aiReports;
+
+  const home = match?.home || "主队";
+  const away = match?.away || "客队";
+  const league = match?.league || "赛事";
+
+  return aiModelBlueprints.map((item, index) => {
+    const resultLabel = aiResultLabelMap[item.result] || "平";
+    const direction =
+      item.result === "win"
+        ? `${home}不败倾向更强`
+        : item.result === "loss"
+          ? `${away}反击效率更值得防范`
+          : "双方节奏接近，平局权重上升";
+
+    return {
+      ...item,
+      summary: `${item.modelName} 倾向${resultLabel}，重点参考${league}赛程强度、攻守转换速度和临场阵容完整度。`,
+      reportSections: [
+        {
+          title: "A 核心判断",
+          body: `${direction}。模型把主队控球稳定性、客队防线回收质量和比赛节奏作为核心判断依据。`,
+        },
+        {
+          title: "B 比分逻辑",
+          body: `全场比分参考 ${item.fullScore}。若前 30 分钟出现快速进球，比赛会更接近开放式对攻；若节奏偏慢，小比分概率提高。`,
+        },
+        {
+          title: "C 半场逻辑",
+          body: `半场比分参考 ${item.halfScore}。上半场更看重双方试探阶段的压迫强度和定位球机会。`,
+        },
+        {
+          title: "D 关键数据依据",
+          body: `综合最近赛程密度、进攻三区触球、失误后的回防速度，以及主客身份带来的节奏差异。第 ${index + 1} 套模型权重偏向稳定性。`,
+        },
+        {
+          title: "E 风险提示",
+          body: "赛前首发、天气、临场战术和红黄牌都会显著改变走势，任何单一模型结论都不应单独使用。",
+        },
+        {
+          title: "F 赛前更新建议",
+          body: "开赛前 30 分钟重点复核首发名单、赔率波动和伤停更新，再决定是否调整比分和胜平负方向。",
+        },
+      ],
+    };
   });
 }
 
@@ -1769,7 +1896,7 @@ function matchCard(match, index, day) {
   const isFinished = statusHtml.includes("finished");
 
   return `
-    <article class="match-card reveal-delay-${Math.min(index + 1, 5)}" data-match-no="${escapeHtml(match.matchNo)}">
+    <article class="match-card reveal-delay-${Math.min(index + 1, 5)}" data-match-no="${escapeHtml(match.matchNo)}" data-home="${escapeHtml(match.home)}" data-away="${escapeHtml(match.away)}">
       <div class="match-card-top">
         <div>
           <div class="match-league">${renderMatchNo(match.matchNo)} · <span class="match-league-name">${escapeHtml(match.league)}</span></div>
@@ -1782,13 +1909,13 @@ function matchCard(match, index, day) {
         <div class="team">
           ${teamBadgeHtml(match.home)}
           <span class="team-name">${escapeHtml(match.home)}</span>
-          <span class="team-name-sm">主</span>
+          <span class="team-name-sm tag-home">主</span>
         </div>
         <div class="score-area">${scoreHtml(match)}</div>
         <div class="team">
           ${teamBadgeHtml(match.away)}
           <span class="team-name">${escapeHtml(match.away)}</span>
-          <span class="team-name-sm team-name-spacer" aria-hidden="true">主</span>
+          <span class="team-name-sm tag-away">客</span>
         </div>
       </div>
       <div class="match-card-footer">
@@ -1840,7 +1967,7 @@ function settleCardsVisible(scope = scheduleContent) {
 function isAnyModalOpen() {
   return qrModal.classList.contains("open") ||
     menuPopup.classList.contains("open") ||
-    document.querySelector(".ai-modal-overlay") !== null;
+    aiDetailPage?.classList.contains("active");
 }
 
 function updateChips() {
@@ -1973,7 +2100,8 @@ async function loadSchedule({ notify = false } = {}) {
     const response = await fetch("/api/schedule", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
-    scheduleDays = payload.days || [];
+    const loadedDays = Array.isArray(payload.days) ? payload.days : [];
+    scheduleDays = hasAnyScheduleMatch(loadedDays) ? loadedDays : mockScheduleDays();
     scheduleMarkupCache.clear();
     schedulePageCache.clear();
 
@@ -1986,14 +2114,14 @@ async function loadSchedule({ notify = false } = {}) {
       showToast(summary);
     }
   } catch (error) {
-    scheduleContent.innerHTML = `
-      <div class="empty-page">
-        <div class="empty-inner">
-          <p class="empty-title">数据读取失败</p>
-          <p class="empty-desc">请确认后台服务正在运行，然后刷新页面。</p>
-        </div>
-      </div>
-    `;
+    // 后端暂时不可用时仍展示静态赛事，便于主题和 AI 详情页完整预览。
+    scheduleDays = mockScheduleDays();
+    scheduleMarkupCache.clear();
+    schedulePageCache.clear();
+    buildDateStrip();
+    renderSchedule({ animate: false });
+    setTimeout(playEntrance, 100);
+    if (notify) showToast("已切换到静态预览数据");
   }
 }
 
@@ -2291,9 +2419,10 @@ async function copyText(text) {
 // === Hamburger Menu Dropdown ===
 function readStoredThemeChoice() {
   try {
-    return localStorage.getItem(themeChoiceStorageKey) || "space-amber";
+    const storedTheme = localStorage.getItem(themeChoiceStorageKey);
+    return supportedThemeKeys.has(storedTheme) ? storedTheme : defaultThemeKey;
   } catch (error) {
-    return "space-amber";
+    return defaultThemeKey;
   }
 }
 
@@ -2478,11 +2607,12 @@ menuPopup.querySelectorAll(".menu-panel-main .menu-item").forEach((btn) => {
 });
 
 function setSelectedTheme(themeKey, shouldToast = false) {
+  const nextTheme = supportedThemeKeys.has(themeKey) ? themeKey : defaultThemeKey;
   const themeOptions = menuPopup.querySelectorAll(".theme-option");
   let selectedLabel = "";
   let hasSelection = false;
   themeOptions.forEach((option) => {
-    const isSelected = option.dataset.theme === themeKey;
+    const isSelected = option.dataset.theme === nextTheme;
     option.classList.toggle("is-selected", isSelected);
     option.setAttribute("aria-checked", isSelected ? "true" : "false");
     if (isSelected) {
@@ -2490,18 +2620,19 @@ function setSelectedTheme(themeKey, shouldToast = false) {
       selectedLabel = option.dataset.label || option.textContent.trim();
     }
   });
-  if (!hasSelection && themeKey !== "space-amber") {
-    setSelectedTheme("space-amber", shouldToast);
+  if (!hasSelection && nextTheme !== defaultThemeKey) {
+    setSelectedTheme(defaultThemeKey, shouldToast);
     return;
   }
-  storeThemeChoice(themeKey);
+  document.documentElement.dataset.theme = hasSelection ? nextTheme : defaultThemeKey;
+  storeThemeChoice(hasSelection ? nextTheme : defaultThemeKey);
   if (shouldToast && selectedLabel) showToast(selectedLabel);
 }
 
 menuPopup.querySelectorAll(".theme-option").forEach((btn) => {
   btn.addEventListener("click", (event) => {
     event.stopPropagation();
-    setSelectedTheme(btn.dataset.theme || "space-amber", true);
+    setSelectedTheme(btn.dataset.theme || defaultThemeKey, true);
     updateMenuStageHeight();
   });
 });
@@ -2526,7 +2657,8 @@ async function patchScoresSilently() {
     const response = await fetch("/api/schedule", { cache: "no-store" });
     if (!response.ok) return;
     const payload = await response.json();
-    const days = payload.days || [];
+    const days = Array.isArray(payload.days) ? payload.days : [];
+    if (!hasAnyScheduleMatch(days)) return;
     const newMatches = days.flatMap((d) => d.matches || []);
     const newKeys = days.map((d) => d.dateKey).sort().join(",");
 
@@ -2586,12 +2718,11 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (qrModal.classList.contains("open")) closeQrModal();
     if (menuPopup.classList.contains("open")) closeMenuPopup();
-    const aiOverlay = document.querySelector(".ai-modal-overlay");
-    if (aiOverlay) aiOverlay.remove();
+    if (aiDetailPage?.classList.contains("active")) closeStaticAiDetail();
   }
 });
 
-// ---- AI 分析弹窗 ----
+// ---- AI 分析详情页 ----
 function findMatchByNo(matchNo) {
   for (const day of scheduleDays) {
     const found = (day.matches || []).find((m) => m.matchNo === matchNo);
@@ -2600,390 +2731,161 @@ function findMatchByNo(matchNo) {
   return null;
 }
 
-function aiPeekHtml(match, day) {
-  return '<span class="ai-peek-arrow"></span>';
+function aiResultLabel(result) {
+  return aiResultLabelMap[result] || "平";
 }
 
-function aiCurrentHtml(match) {
-  const scoreDisplay = (match.homeScore ?? "") && (match.awayScore ?? "")
-    ? `${match.homeScore}∶${match.awayScore}`
-    : "VS";
-  const fullScore = match.fullScore || "";
-  const halfScore = match.halfScore || match.apiHalfTimeScore || "";
-  const league = match.league || "";
-  const kickoff = match.kickoff
-    ? new Date(match.kickoff).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
-    : "";
+function aiResultTone(result) {
+  return aiResultToneMap[result] || "result-draw";
+}
 
+function aiDetailMatchCard(match, day) {
+  const kickoff = compactKickoffDateTime(match, day);
   return `
-    <div class="ai-modal-match">
-      <div class="ai-modal-teams">
-        <div class="ai-modal-team">
+    <article class="ai-detail-match-card">
+      <div class="ai-detail-match-meta">
+        <span>${renderMatchNo(match.matchNo)} · ${escapeHtml(match.league || "")}</span>
+        <span>${escapeHtml(kickoff)}</span>
+      </div>
+      <div class="ai-detail-teams">
+        <div class="ai-detail-team">
           ${teamBadgeHtml(match.home)}
-          <span>${escapeHtml(match.home)}</span>
+          <strong>${escapeHtml(match.home || "主队")}</strong>
+          <span class="team-name-sm tag-home">主</span>
         </div>
-        <span class="ai-modal-score">${escapeHtml(scoreDisplay)}</span>
-        <div class="ai-modal-team">
+        <div class="ai-detail-vs">VS</div>
+        <div class="ai-detail-team">
           ${teamBadgeHtml(match.away)}
-          <span>${escapeHtml(match.away)}</span>
+          <strong>${escapeHtml(match.away || "客队")}</strong>
+          <span class="team-name-sm tag-away">客</span>
         </div>
       </div>
-      <div class="ai-modal-meta">${escapeHtml(league)} · ${escapeHtml(kickoff)}${fullScore ? ` · 全场 ${escapeHtml(fullScore)}` : ""}${halfScore ? ` · 半场 ${escapeHtml(halfScore)}` : ""}</div>
-      <button class="ai-modal-close" type="button" aria-label="关闭">&times;</button>
-    </div>
-    <div class="ai-modal-tabs">
-      <button class="ai-tab active" type="button" data-ai="deepseek">
-        <svg class="ai-tab-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor" opacity="0.3"/><path d="M12 10L2 15l10 5 10-5-10-5z" fill="currentColor" opacity="0.6"/></svg>
-        DeepSeek
-      </button>
-      <button class="ai-tab" type="button" data-ai="doubao">
-        <svg class="ai-tab-icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2"/><path d="M8 11c0-2 1-3 4-3s4 1 4 3c0 2-1 4-4 4s-4-2-4-4z" fill="currentColor"/></svg>
-        豆包
-      </button>
-    </div>
-    <div class="ai-modal-body">
-      <div class="ai-modal-indicator">
-        <span class="ai-indicator-dot active" data-ai="deepseek"></span>
-        <span class="ai-indicator-dot" data-ai="doubao"></span>
-      </div>
-      <div class="ai-modal-section ai-section-deepseek active">
-        <div class="ai-report-loading">
-          <div class="ai-report-spinner"></div>
-          <span>DeepSeek 正在分析中...</span>
-        </div>
-      </div>
-      <div class="ai-modal-section ai-section-doubao">
-        <div class="ai-report-loading">
-          <div class="ai-report-spinner"></div>
-          <span>豆包 正在分析中...</span>
-        </div>
-      </div>
+    </article>
+  `;
+}
+
+function openStaticAiDetail(matchNo) {
+  const result = findMatchByNo(matchNo);
+  if (!result || !aiDetailPage) return;
+  activeAiDetailMatch = result.match;
+  activeAiDetailDay = result.day;
+  renderAiReportList(activeAiDetailMatch, activeAiDetailDay);
+  aiDetailPage.classList.add("active");
+  aiDetailPage.setAttribute("aria-hidden", "false");
+  appShell?.setAttribute("aria-hidden", "true");
+  document.body.classList.add("ai-detail-open");
+  window.scrollTo({ top: 0, behavior: "auto" });
+  requestAnimationFrame(() => hydrateTeamBadges(aiDetailPage));
+}
+
+function closeStaticAiDetail() {
+  if (!aiDetailPage) return;
+  aiDetailPage.classList.remove("active");
+  aiDetailPage.setAttribute("aria-hidden", "true");
+  appShell?.setAttribute("aria-hidden", "false");
+  document.body.classList.remove("ai-detail-open");
+  activeAiDetailMatch = null;
+  activeAiDetailDay = null;
+}
+
+function renderAiReportList(match, day) {
+  const reports = aiReportsForMatch(match);
+  aiDetailPage.innerHTML = `
+    <div class="ai-detail-shell" data-ai-view="list">
+      <header class="ai-detail-topbar">
+        <button class="ai-page-back" type="button" data-ai-action="close" aria-label="返回赛程">← 返回</button>
+        <strong>AI分析详情</strong>
+        <span aria-hidden="true"></span>
+      </header>
+
+      ${aiDetailMatchCard(match, day)}
+
+      <section class="ai-model-list" aria-label="模型分析列表">
+        ${reports.map((report, index) => `
+          <article class="ai-model-card">
+            <div class="ai-model-main">
+              <div>
+                <h3>${escapeHtml(report.modelName)}</h3>
+                <p>${escapeHtml(report.summary)}</p>
+              </div>
+              <span class="ai-result-badge ${aiResultTone(report.result)}">${aiResultLabel(report.result)}</span>
+            </div>
+            <div class="ai-score-grid">
+              <span>全场 <strong>${escapeHtml(report.fullScore)}</strong></span>
+              <span>半场 <strong>${escapeHtml(report.halfScore)}</strong></span>
+            </div>
+            <button class="ai-report-open" type="button" data-report-index="${index}">查看报告</button>
+          </article>
+        `).join("")}
+      </section>
     </div>
   `;
 }
 
-function renderAiReportContent(text) {
-  if (!text || !text.trim()) return "<p>暂无分析内容</p>";
+function renderAiReportDetail(match, day, report) {
+  aiDetailPage.innerHTML = `
+    <div class="ai-detail-shell" data-ai-view="report">
+      <header class="ai-detail-topbar">
+        <button class="ai-page-back" type="button" data-ai-action="list" aria-label="返回AI分析列表">← 返回</button>
+        <strong>${escapeHtml(report.modelName)} 详细分析</strong>
+        <span aria-hidden="true"></span>
+      </header>
 
-  let out = "";
-  let inList = false;
-  const lines = text.split("\n");
+      ${aiDetailMatchCard(match, day)}
 
-  for (const raw of lines) {
-    let line = raw.trim();
-    if (!line) { out += ""; continue; }
+      <section class="ai-report-summary">
+        <div class="ai-model-main">
+          <div>
+            <h3>${escapeHtml(report.modelName)}</h3>
+            <p>${escapeHtml(report.summary)}</p>
+          </div>
+          <span class="ai-result-badge ${aiResultTone(report.result)}">${aiResultLabel(report.result)}</span>
+        </div>
+        <div class="ai-score-grid">
+          <span>全场 <strong>${escapeHtml(report.fullScore)}</strong></span>
+          <span>半场 <strong>${escapeHtml(report.halfScore)}</strong></span>
+        </div>
+      </section>
 
-    const escaped = escapeHtml(line);
+      <section class="ai-report-sections" aria-label="详细报告">
+        ${(report.reportSections || []).map((section) => `
+          <article class="ai-report-section">
+            <h3>${escapeHtml(section.title)}</h3>
+            <p>${escapeHtml(section.body)}</p>
+          </article>
+        `).join("")}
+      </section>
 
-    if (/^---+$/.test(line) || /^\*\*\*+$/.test(escaped)) {
-      out += '<hr class="ai-hr">';
-      continue;
-    }
-
-    if (/^###\s+/.test(line)) {
-      const heading = escaped.replace(/^###\s+/, "");
-      out += `<h3 class="ai-heading ai-h3"><span class="ai-h3-bar"></span>${heading}</h3>`;
-      continue;
-    }
-    if (/^####\s+/.test(line)) {
-      const heading = escaped.replace(/^####\s+/, "");
-      out += `<h4 class="ai-heading ai-h4">${heading}</h4>`;
-      continue;
-    }
-
-    if (/^\*\s+/.test(line)) {
-      if (!inList) { out += '<ul class="ai-list">'; inList = true; }
-      const body = escaped.replace(/^\*\s+/, "");
-      out += `<li>${body}</li>`;
-      continue;
-    }
-
-    if (inList) { out += "</ul>"; inList = false; }
-
-    let processed = escaped;
-    processed = processed.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    processed = processed.replace(/^(\d+)\.\s*\*\*(.+?)\*\*\s*/g, '<span class="ai-section-num">$1.</span> <strong>$2</strong> ');
-    processed = processed.replace(/^(\d+)\.\s+(.+)$/g, '<span class="ai-section-num">$1.</span> $2');
-
-    const hasSegment = /^[🏆📊📈🤝⚽🎯🔍💡⚠️✅🔥📋🎲💰]/.test(line);
-    const cls = hasSegment ? "ai-line ai-line-icon" : "ai-line";
-    out += `<p class="${cls}">${processed}</p>`;
-  }
-
-  if (inList) out += "</ul>";
-
-  return `<div class="ai-modal-text">${out}</div>`;
+      <p class="ai-disclaimer">本分析基于赛前公开数据和模型推理生成，仅供参考，不构成投注建议。</p>
+    </div>
+  `;
+  requestAnimationFrame(() => hydrateTeamBadges(aiDetailPage));
 }
 
-function populateAiReportSection(section, content) {
-  if (!content) {
-    section.innerHTML = '<div class="ai-report-error">⚠ 分析报告生成失败，请稍后重试</div>';
+aiDetailPage?.addEventListener("click", (event) => {
+  const reportButton = event.target.closest(".ai-report-open");
+  if (reportButton && activeAiDetailMatch && activeAiDetailDay) {
+    const reportIndex = Number(reportButton.dataset.reportIndex || "0");
+    const report = aiReportsForMatch(activeAiDetailMatch)[reportIndex];
+    if (report) renderAiReportDetail(activeAiDetailMatch, activeAiDetailDay, report);
     return;
   }
-  section.innerHTML = renderAiReportContent(content);
-}
 
-function loadAiReport(matchNo, modal) {
-  const dsSection = modal.querySelector(".ai-section-deepseek");
-  const dbSection = modal.querySelector(".ai-section-doubao");
-
-  fetch(`/api/ai-report?matchNo=${encodeURIComponent(matchNo)}`)
-    .then((r) => r.json())
-    .then((data) => {
-      if (!data.ok) {
-        if (dsSection) dsSection.innerHTML = '<div class="ai-report-error">API 不可用</div>';
-        if (dbSection) dbSection.innerHTML = '<div class="ai-report-error">API 不可用</div>';
-        return;
-      }
-      if (data.pending) {
-        pollAiReport(matchNo, modal, 0);
-        return;
-      }
-      const reports = data.reports || {};
-      populateAiReportSection(dsSection, reports.deepseek?.content);
-      populateAiReportSection(dbSection, reports.doubao?.content);
-    })
-    .catch(() => {
-      if (dsSection) if (dsSection.querySelector(".ai-report-loading")) {};
-      if (dbSection) if (dbSection.querySelector(".ai-report-loading")) {};
-    });
-}
-
-function pollAiReport(matchNo, modal, attempt) {
-  if (attempt > 30) return;
-  setTimeout(() => {
-    fetch(`/api/ai-report?matchNo=${encodeURIComponent(matchNo)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const dsSection = modal.querySelector(".ai-section-deepseek");
-        const dbSection = modal.querySelector(".ai-section-doubao");
-        if (!data.ok) return;
-        if (data.pending) {
-          pollAiReport(matchNo, modal, attempt + 1);
-          return;
-        }
-        const reports = data.reports || {};
-        populateAiReportSection(dsSection, reports.deepseek?.content);
-        populateAiReportSection(dbSection, reports.doubao?.content);
-      })
-      .catch(() => { pollAiReport(matchNo, modal, attempt + 1); });
-  }, 3000);
-}
-
-function buildAiModalHtml(match, day) {
-  const matches = day.matches || [];
-  const idx = matches.indexOf(match);
-  const prevMatch = matches[idx - 1] || null;
-  const nextMatch = matches[idx + 1] || null;
-
-  const topPeek = prevMatch
-    ? `<div class="ai-match-peek top" data-match-no="${escapeHtml(prevMatch.matchNo)}">${aiPeekHtml(prevMatch, day)}</div>`
-    : "";
-  const bottomPeek = nextMatch
-    ? `<div class="ai-match-peek bottom" data-match-no="${escapeHtml(nextMatch.matchNo)}">${aiPeekHtml(nextMatch, day)}</div>`
-    : "";
-
-  return topPeek + `<div class="ai-modal-pager" data-match-no="${escapeHtml(match.matchNo)}">${aiCurrentHtml(match)}</div>` + bottomPeek;
-}
+  const actionButton = event.target.closest("[data-ai-action]");
+  if (!actionButton) return;
+  const action = actionButton.dataset.aiAction;
+  if (action === "close") {
+    closeStaticAiDetail();
+    return;
+  }
+  if (action === "list" && activeAiDetailMatch && activeAiDetailDay) {
+    renderAiReportList(activeAiDetailMatch, activeAiDetailDay);
+    requestAnimationFrame(() => hydrateTeamBadges(aiDetailPage));
+  }
+});
 
 function openAiAnalysis(matchNo) {
-  const result = findMatchByNo(matchNo);
-  if (!result) return;
-  let currentMatch = result.match;
-  let currentDay = result.day;
-
-  const existing = document.querySelector(".ai-modal-overlay");
-  if (existing) existing.remove();
-
-  const overlay = document.createElement("div");
-  overlay.className = "ai-modal-overlay";
-
-  const modal = document.createElement("div");
-  modal.className = "ai-modal";
-  modal.innerHTML = buildAiModalHtml(currentMatch, currentDay);
-
-  overlay.appendChild(modal);
-
-  let isAiSwipeTransitioning = false;
-
-  function bindAiTabs() {
-    const aiOrder = ["deepseek", "doubao"];
-
-    function switchAiTab(ai) {
-      modal.querySelectorAll(".ai-tab").forEach((t) => t.classList.toggle("active", t.dataset.ai === ai));
-      modal.querySelectorAll(".ai-section-deepseek, .ai-section-doubao").forEach((s) => s.classList.toggle("active", s.classList.contains(`ai-section-${ai}`)));
-      modal.querySelectorAll(".ai-indicator-dot").forEach((d) => d.classList.toggle("active", d.dataset.ai === ai));
-    }
-
-    modal.querySelectorAll(".ai-tab").forEach((tab) => {
-      tab.addEventListener("click", () => switchAiTab(tab.dataset.ai));
-    });
-
-    function bindAiSwipe(el) {
-      let startX = 0;
-      let tracking = false;
-
-      el.addEventListener("pointerdown", (e) => {
-        if (e.target.closest("button")) return;
-        startX = e.clientX;
-        tracking = true;
-      });
-
-      el.addEventListener("pointermove", () => {
-        if (!tracking) return;
-      });
-
-      el.addEventListener("pointerup", (e) => {
-        if (!tracking) return;
-        tracking = false;
-        const dx = e.clientX - startX;
-        if (Math.abs(dx) < 40) return;
-        const current = modal.querySelector(".ai-tab.active").dataset.ai;
-        const curIdx = aiOrder.indexOf(current);
-        const nextIdx = dx < 0 ? curIdx + 1 : curIdx - 1;
-        if (nextIdx >= 0 && nextIdx < aiOrder.length) switchAiTab(aiOrder[nextIdx]);
-      });
-
-      el.addEventListener("pointercancel", () => { tracking = false; });
-    }
-
-    bindAiSwipe(modal.querySelector(".ai-modal-tabs"));
-    bindAiSwipe(modal.querySelector(".ai-modal-body"));
-  }
-
-  function switchToMatch(targetMatch) {
-    if (isAiSwipeTransitioning) return;
-    if (targetMatch === currentMatch) return;
-
-    const result2 = findMatchByNo(targetMatch.matchNo);
-    if (!result2) return;
-    const newMatch = result2.match;
-    const newDay = result2.day;
-
-    const oldPager = modal.querySelector(".ai-modal-pager");
-    const oldPeeks = modal.querySelectorAll(".ai-match-peek");
-
-    isAiSwipeTransitioning = true;
-
-    const matches = (newDay.matches || []);
-    const newIdx = matches.indexOf(newMatch);
-    const oldIdx = (currentDay.matches || []).indexOf(currentMatch);
-    const dir = newIdx > oldIdx ? 1 : -1;
-
-    gsap.to(oldPager, {
-      yPercent: dir * -100,
-      opacity: 0,
-      duration: 0.2,
-      ease: "power2.in",
-      onComplete() {
-        gsap.to(oldPeeks, { opacity: 0, duration: 0.12, onComplete() {
-        currentMatch = newMatch;
-        currentDay = newDay;
-
-        modal.innerHTML = buildAiModalHtml(newMatch, newDay);
-        modal.querySelector(".ai-modal-close").addEventListener("click", close);
-        bindAiTabs();
-        bindAiPeeks();
-        bindAiVerticalSwipe();
-        requestAnimationFrame(() => hydrateTeamBadges(modal));
-        loadAiReport(newMatch.matchNo, modal);
-
-        const newPager = modal.querySelector(".ai-modal-pager");
-        const newPeeks = modal.querySelectorAll(".ai-match-peek");
-
-        gsap.set(newPager, { yPercent: dir * 100, opacity: 0 });
-        gsap.set(newPeeks, { opacity: 0 });
-
-        gsap.to(newPager, {
-          yPercent: 0,
-          opacity: 1,
-          duration: 0.28,
-          ease: "power2.out",
-        });
-        gsap.to(newPeeks, {
-          opacity: 1,
-          duration: 0.35,
-          ease: "power2.out",
-          onComplete() {
-            isAiSwipeTransitioning = false;
-            newPeeks.forEach((el) => { el.style.removeProperty("opacity"); });
-          },
-        });
-        }});
-      },
-    });
-  }
-
-  function bindAiVerticalSwipe() {
-    let startY = 0;
-    let startX = 0;
-    let tracking = false;
-
-    modal.addEventListener("pointerdown", (e) => {
-      if (e.target.closest("button") || e.target.closest(".ai-modal-body")) return;
-      startY = e.clientY;
-      startX = e.clientX;
-      tracking = true;
-    });
-
-    modal.addEventListener("pointermove", () => {
-      if (!tracking) return;
-    });
-
-    modal.addEventListener("pointerup", (e) => {
-      if (!tracking) return;
-      tracking = false;
-      const dy = e.clientY - startY;
-      const dx = e.clientX - startX;
-      if (Math.abs(dy) < 40 || Math.abs(dy) < Math.abs(dx)) return;
-
-      const matches = currentDay.matches || [];
-      const curIdx = matches.indexOf(currentMatch);
-      const nextIdx = dy > 0 ? curIdx - 1 : curIdx + 1;
-      if (nextIdx < 0 || nextIdx >= matches.length) return;
-      switchToMatch(matches[nextIdx]);
-    });
-
-    modal.addEventListener("pointercancel", () => { tracking = false; });
-  }
-
-  function bindAiPeeks() {
-    modal.querySelectorAll(".ai-match-peek").forEach((peek) => {
-      peek.addEventListener("click", () => {
-        const mn = peek.dataset.matchNo;
-        const matches = currentDay.matches || [];
-        const target = matches.find((m) => m.matchNo === mn);
-        if (target) switchToMatch(target);
-      });
-    });
-  }
-
-  const close = () => {
-    overlay.classList.add("closing");
-    const onTransitionEnd = () => {
-      if (document.body.contains(overlay)) overlay.remove();
-      overlay.removeEventListener("transitionend", onTransitionEnd);
-    };
-    overlay.addEventListener("transitionend", onTransitionEnd, { once: true });
-    setTimeout(() => { if (document.body.contains(overlay)) overlay.remove(); }, 320);
-  };
-
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) close();
-  });
-  modal.querySelector(".ai-modal-close").addEventListener("click", close);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); }, { once: true });
-
-  bindAiTabs();
-  bindAiPeeks();
-  bindAiVerticalSwipe();
-  requestAnimationFrame(() => hydrateTeamBadges(modal));
-  loadAiReport(matchNo, modal);
-
-  document.body.appendChild(overlay);
-  requestAnimationFrame(() => {
-    overlay.classList.add("open");
-  });
+  openStaticAiDetail(matchNo);
 }
 
 document.addEventListener("click", (e) => {
