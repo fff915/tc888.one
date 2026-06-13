@@ -1915,36 +1915,49 @@ html {
 /* B-2 rounded-cut match card: only the schedule cards use this override. */
 .match-card {
   --match-card-radius: clamp(1.26rem, 4.75vw, 1.52rem);
+  --card-edge-alpha: 0.34;
+  --card-edge-soft-alpha: 0.078;
+  --card-edge-inner-alpha: 0.038;
+  --ai-edge-alpha: 0.7;
+  --ai-edge-soft-alpha: 0.1;
   gap: clamp(0.42rem, 1.9vw, 0.66rem);
   min-height: clamp(7.72rem, 35vw, 8.92rem);
   padding: clamp(0.78rem, 2.85vw, 0.94rem) clamp(0.94rem, 4vw, 1.24rem) clamp(0.94rem, 3.65vw, 1.26rem);
-  border: 1px solid transparent;
+  border: 1px solid rgba(var(--match-card-border-rgb), var(--card-edge-alpha));
   border-radius: var(--match-card-radius);
   color: var(--card-text-main);
   background:
-    radial-gradient(95% 76% at 8% -8%, rgba(var(--match-card-border-rgb), 0.18) 0%, rgba(var(--match-card-border-rgb), 0.07) 28%, transparent 50%) padding-box,
-    radial-gradient(18% 28% at 99% 94%, rgba(var(--ai-accent-rgb), 0.045) 0%, rgba(var(--ai-accent-rgb), 0.02) 45%, transparent 76%) padding-box,
-    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 34%) padding-box,
-    linear-gradient(150deg, var(--match-card-bg) 0%, var(--card-bg) 54%, var(--match-card-bg-soft) 100%) padding-box,
-    linear-gradient(136deg, rgba(var(--match-card-border-rgb), 0.62) 0%, rgba(var(--match-card-border-rgb), 0.15) 64%, rgba(var(--ai-accent-rgb), 0.46) 100%) border-box;
+    radial-gradient(88% 62% at 8% -10%, rgba(var(--match-card-border-rgb), 0.088) 0%, rgba(var(--match-card-border-rgb), 0.032) 34%, transparent 55%),
+    radial-gradient(24% 32% at 101% 98%, rgba(var(--ai-accent-rgb), 0.026) 0%, rgba(var(--ai-accent-rgb), 0.012) 48%, transparent 76%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.03), transparent 33%),
+    linear-gradient(150deg, var(--match-card-bg) 0%, var(--card-bg) 56%, var(--match-card-bg-soft) 100%);
   box-shadow:
-    0 0 0 1px rgba(var(--match-card-border-rgb), 0.045),
-    0 0 0.42rem rgba(var(--match-card-border-rgb), 0.1),
+    0 0 0 1px rgba(var(--match-card-border-rgb), 0.038),
+    0 0 0.34rem rgba(var(--match-card-border-rgb), var(--card-edge-soft-alpha)),
     0 0.72rem 1.45rem rgba(0, 0, 0, 0.22),
-    inset 0 0 0.82rem rgba(var(--match-card-border-rgb), 0.052);
+    inset 0 1px 0 rgba(255, 255, 255, 0.048),
+    inset 0 0 0.7rem rgba(var(--match-card-border-rgb), var(--card-edge-inner-alpha));
   transition: transform 500ms var(--ease-power3), opacity 500ms var(--ease-power3);
 }
 
 .match-card::before {
+  content: "";
+  position: absolute;
   z-index: 0;
   inset: 0;
   border-radius: inherit;
+  border: 1px solid rgba(var(--match-card-border-rgb), 0.14);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 24%),
-    radial-gradient(78% 60% at -12% 12%, rgba(var(--match-card-border-rgb), 0.14), transparent 58%),
-    radial-gradient(34% 36% at 100% 100%, rgba(var(--ai-accent-rgb), 0.045), transparent 72%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), transparent 24%, transparent 78%, rgba(var(--match-card-border-rgb), 0.018)),
+    radial-gradient(64% 42% at 0 0, rgba(var(--match-card-border-rgb), 0.072), transparent 68%),
+    radial-gradient(44% 44% at 100% 0, rgba(var(--match-card-border-rgb), 0.04), transparent 70%);
+  box-shadow:
+    inset 0 0.04rem 0 rgba(255, 255, 255, 0.055),
+    inset 0 0 0.36rem rgba(var(--match-card-border-rgb), 0.03),
+    0 0 0.24rem rgba(var(--match-card-border-rgb), 0.08);
   filter: none;
-  opacity: 0.44;
+  opacity: 0.76;
+  pointer-events: none;
 }
 
 .match-card::after {
@@ -1954,28 +1967,29 @@ html {
   right: -1px;
   bottom: -1px;
   z-index: 1;
-  width: clamp(4.85rem, 22vw, 6.2rem);
-  height: clamp(4.65rem, 31vw, 5.95rem);
+  width: clamp(3.95rem, 17.5vw, 5rem);
+  height: clamp(3.45rem, 22.2vw, 4.46rem);
   border-bottom-right-radius: var(--match-card-radius);
   background:
-    linear-gradient(128deg, transparent 0 58%, rgba(var(--ai-accent-rgb), 0.022) 59%, rgba(var(--ai-accent-rgb), 0.052) 100%),
-    radial-gradient(42% 48% at 96% 90%, rgba(var(--ai-accent-rgb), 0.08) 0%, rgba(var(--ai-accent-rgb), 0.035) 46%, transparent 78%),
-    linear-gradient(135deg, transparent 0 57%, rgba(255, 255, 255, 0.018) 58%, transparent 78%);
+    linear-gradient(128deg, transparent 0 61%, rgba(var(--ai-accent-rgb), 0.018) 62%, rgba(var(--ai-accent-rgb), 0.038) 100%),
+    radial-gradient(44% 48% at 99% 96%, rgba(var(--ai-accent-rgb), 0.052) 0%, rgba(var(--ai-accent-rgb), 0.02) 46%, transparent 76%),
+    linear-gradient(135deg, transparent 0 60%, rgba(255, 255, 255, 0.012) 61%, transparent 80%);
   box-shadow:
-    inset -1px -1px 0 rgba(var(--ai-accent-rgb), 0.42);
-  -webkit-clip-path: polygon(18% 100%, 100% 100%, 100% 16%, 74% 42%);
-  clip-path: polygon(18% 100%, 100% 100%, 100% 16%, 74% 42%);
+    inset -1px -1px 0 rgba(var(--ai-accent-rgb), 0.28);
+  -webkit-clip-path: polygon(31% 100%, 100% 100%, 100% 38%, 72% 60%);
+  clip-path: polygon(31% 100%, 100% 100%, 100% 38%, 72% 60%);
   filter: none;
-  opacity: 0.48;
+  opacity: 0.46;
   pointer-events: none;
 }
 
 .match-card:hover {
   box-shadow:
-    0 0 0 1px rgba(var(--match-card-border-rgb), 0.045),
-    0 0 0.42rem rgba(var(--match-card-border-rgb), 0.1),
+    0 0 0 1px rgba(var(--match-card-border-rgb), 0.038),
+    0 0 0.34rem rgba(var(--match-card-border-rgb), var(--card-edge-soft-alpha)),
     0 0.72rem 1.45rem rgba(0, 0, 0, 0.22),
-    inset 0 0 0.82rem rgba(var(--match-card-border-rgb), 0.052);
+    inset 0 1px 0 rgba(255, 255, 255, 0.048),
+    inset 0 0 0.7rem rgba(var(--match-card-border-rgb), var(--card-edge-inner-alpha));
 }
 
 .match-card-top,
@@ -2044,9 +2058,16 @@ html {
 }
 
 .match-card .team-name-sm.tag-home {
-  color: rgba(255, 255, 255, 0.88);
-  background: rgba(var(--card-home-rgb), 0.7);
-  box-shadow: 0 0 0.45rem rgba(var(--card-home-rgb), 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.58);
+  background: rgba(var(--card-home-rgb), 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.match-card .team-name-sm.tag-away {
+  visibility: hidden;
+  opacity: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .match-card .match-card-footer,
@@ -2067,17 +2088,19 @@ html {
   position: absolute;
   top: auto;
   right: auto;
-  left: clamp(2.92rem, 15.2vw, 4.15rem);
-  bottom: clamp(0.08rem, 0.6vw, 0.18rem);
+  left: clamp(3.2rem, 15.4vw, 4.26rem);
+  bottom: clamp(0.05rem, 0.38vw, 0.12rem);
   z-index: 1;
-  width: clamp(6.75rem, 35vw, 8.85rem);
+  width: clamp(4.28rem, 22.8vw, 5.56rem);
   height: 1px;
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.42) 18%, var(--ai-accent) 52%, rgba(var(--ai-accent-rgb), 0.74) 82%, rgba(var(--ai-accent-rgb), 0));
-  box-shadow: 0 0 0.15rem rgba(var(--ai-accent-rgb), 0.46), 0 0 0.34rem rgba(var(--ai-accent-rgb), 0.16);
-  opacity: 0.84;
-  transform: rotate(-47deg) skewX(-4deg);
+  background:
+    radial-gradient(circle at 5% 50%, rgba(var(--ai-accent-rgb), 0.2), transparent 16%),
+    linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.42) 18%, rgba(var(--ai-accent-rgb), var(--ai-edge-alpha)) 54%, rgba(var(--ai-accent-rgb), 0.62) 80%, rgba(var(--ai-accent-rgb), 0));
+  box-shadow: 0 0 0.12rem rgba(var(--ai-accent-rgb), 0.34), 0 0 0.25rem rgba(var(--ai-accent-rgb), var(--ai-edge-soft-alpha));
+  opacity: 0.82;
+  transform: rotate(-44deg) skewX(-4deg);
   transform-origin: left center;
   pointer-events: none;
 }
@@ -2091,11 +2114,11 @@ html {
   right: 0;
   bottom: 0;
   z-index: 0;
-  width: clamp(4.2rem, 19vw, 5.8rem);
+  width: clamp(3.65rem, 16.4vw, 4.95rem);
   height: 1px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.24) 38%, rgba(var(--ai-accent-rgb), 0.64) 100%);
-  box-shadow: 0 0 0.12rem rgba(var(--ai-accent-rgb), 0.24), 0 0 0.3rem rgba(var(--ai-accent-rgb), 0.1);
+  background: linear-gradient(90deg, rgba(var(--ai-accent-rgb), 0), rgba(var(--ai-accent-rgb), 0.16) 38%, rgba(var(--ai-accent-rgb), 0.46) 100%);
+  box-shadow: 0 0 0.1rem rgba(var(--ai-accent-rgb), 0.18), 0 0 0.2rem rgba(var(--ai-accent-rgb), 0.08);
   -webkit-clip-path: none;
   clip-path: none;
   opacity: 0.48;
@@ -2122,8 +2145,8 @@ html {
   inset: 0.25rem 0.18rem 0.08rem;
   z-index: -1;
   border-radius: 0.95rem;
-  background: radial-gradient(circle at 58% 62%, rgba(var(--ai-accent-rgb), 0.08), transparent 66%);
-  opacity: 0.62;
+  background: radial-gradient(circle at 58% 62%, rgba(var(--ai-accent-rgb), 0.052), transparent 64%);
+  opacity: 0.5;
   pointer-events: none;
 }
 
