@@ -2643,6 +2643,11 @@ function connectEvents() {
   if (!("EventSource" in window)) {
     return;
   }
+  // 线上 Worker 当前没有 /api/events，避免移动端控制台每次加载都产生无意义 404。
+  const eventHosts = new Set(["localhost", "127.0.0.1", "::1"]);
+  if (!eventHosts.has(window.location.hostname)) {
+    return;
+  }
 
   const events = new EventSource("/api/events");
   events.addEventListener("updated", () => patchScoresSilently());
