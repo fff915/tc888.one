@@ -1918,10 +1918,19 @@ function matchCard(match, index, day) {
           <span class="team-name-sm tag-away">客</span>
         </div>
       </div>
-      <div class="match-card-footer">
-        <button class="ai-analysis-btn" type="button" data-match-no="${escapeHtml(match.matchNo)}">
-          <svg class="ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-          AI分析
+      <div class="match-card-footer" aria-hidden="false">
+        <button class="ai-analysis-btn" type="button" data-match-no="${escapeHtml(match.matchNo)}" aria-label="AI分析">
+          <span class="match-ai-mark" aria-hidden="true">
+            <svg class="ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="8" width="14" height="10" rx="3.2"/>
+              <path d="M12 8V5"/>
+              <path d="M9 5h6"/>
+              <path d="M8.8 13h.01"/>
+              <path d="M15.2 13h.01"/>
+              <path d="M9.6 16h4.8"/>
+            </svg>
+            <span class="match-ai-text">AI</span>
+          </span>
         </button>
       </div>
     </article>
