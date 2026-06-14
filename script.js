@@ -43,6 +43,7 @@ let aiDetailListScrollTop = 0;
 let aiDetailCloseTimer = 0;
 let aiDetailViewTimer = 0;
 let aiDetailGesture = null;
+let menuEdgeGesture = null;
 const dateOffsets = [-4, -3, -2, -1, 0, 1];
 const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const gestureIntentDistance = 8;
@@ -3129,6 +3130,51 @@ function setupAiEdgeReturnGesture() {
 }
 
 setupAiEdgeReturnGesture();
+
+function setupMenuEdgeReturnGuard() {
+  const isMenuTarget = (target) => Boolean(
+    target instanceof Element
+    && (
+      menuAnchor?.contains(target)
+      || menuPopup?.contains(target)
+      || menuBackdrop?.contains(target)
+    )
+  );
+
+  document.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1 || !isMenuTarget(event.target)) {
+      menuEdgeGesture = null;
+      return;
+    }
+    const touch = event.touches[0];
+    const fromLeft = touch.clientX <= aiDetailEdgeSize;
+    const fromRight = touch.clientX >= window.innerWidth - aiDetailEdgeSize;
+    menuEdgeGesture = fromLeft || fromRight
+      ? { startX: touch.clientX, startY: touch.clientY }
+      : null;
+  }, { passive: true, capture: true });
+
+  document.addEventListener("touchmove", (event) => {
+    if (!menuEdgeGesture || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const dx = touch.clientX - menuEdgeGesture.startX;
+    const dy = touch.clientY - menuEdgeGesture.startY;
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * aiDetailEdgeAxisRatio) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, { passive: false, capture: true });
+
+  document.addEventListener("touchend", () => {
+    menuEdgeGesture = null;
+  }, { passive: true, capture: true });
+
+  document.addEventListener("touchcancel", () => {
+    menuEdgeGesture = null;
+  }, { passive: true, capture: true });
+}
+
+setupMenuEdgeReturnGuard();
 
 aiDetailPage?.addEventListener("click", (event) => {
   const reportButton = event.target.closest(".ai-report-open");
