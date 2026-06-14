@@ -43,7 +43,7 @@ let aiDetailListScrollTop = 0;
 let aiDetailCloseTimer = 0;
 let aiDetailViewTimer = 0;
 let aiDetailGesture = null;
-let menuEdgeGesture = null;
+let aiDetailEdgeHandlers = null;
 const dateOffsets = [-4, -3, -2, -1, 0, 1];
 const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const gestureIntentDistance = 8;
@@ -2998,6 +2998,7 @@ function mountAiDetailPage(match, day) {
   aiDetailPage.setAttribute("aria-hidden", "false");
   appShell?.setAttribute("aria-hidden", "true");
   document.body.classList.add("ai-detail-open");
+  enableAiEdgeReturnGesture();
 }
 
 function openStaticAiDetail(matchNo) {
@@ -3011,6 +3012,7 @@ function openStaticAiDetail(matchNo) {
 }
 
 function finishCloseAiDetail() {
+  disableAiEdgeReturnGesture();
   aiDetailPage.classList.remove("active", "is-closing");
   aiDetailPage.setAttribute("aria-hidden", "true");
   aiDetailPage.innerHTML = "";
@@ -3031,6 +3033,7 @@ function closeStaticAiDetail(options = {}) {
     return;
   }
   clearTimeout(aiDetailCloseTimer);
+  disableAiEdgeReturnGesture();
   aiDetailPage.classList.add("is-closing");
   aiDetailCloseTimer = window.setTimeout(finishCloseAiDetail, aiDetailTransitionMs + 40);
 }
@@ -3090,9 +3093,9 @@ function handleAiPopState() {
   closeStaticAiDetail({ fromHistory: true });
 }
 
-function setupAiEdgeReturnGesture() {
-  if (!aiDetailPage) return;
-  aiDetailPage.addEventListener("touchstart", (event) => {
+function enableAiEdgeReturnGesture() {
+  if (!aiDetailPage || aiDetailEdgeHandlers) return;
+  const touchStart = (event) => {
     if (!canUseAiEdgeReturn(event) || event.touches.length !== 1) return;
     const touch = event.touches[0];
     const fromLeft = touch.clientX <= aiDetailEdgeSize;
@@ -3107,9 +3110,9 @@ function setupAiEdgeReturnGesture() {
       edge: fromLeft ? "left" : "right",
       committed: false,
     };
-  }, { passive: true });
+  };
 
-  aiDetailPage.addEventListener("touchmove", (event) => {
+  const touchMove = (event) => {
     if (!aiDetailGesture || event.touches.length !== 1) return;
     const touch = event.touches[0];
     const dx = touch.clientX - aiDetailGesture.startX;
@@ -3121,60 +3124,33 @@ function setupAiEdgeReturnGesture() {
       event.preventDefault();
       aiDetailGesture.committed = absX >= aiDetailEdgeReturnDistance;
     }
-  }, { passive: false });
+  };
 
-  aiDetailPage.addEventListener("touchend", () => {
+  const touchEnd = () => {
     if (aiDetailGesture?.committed) handleAiUnifiedBack();
     aiDetailGesture = null;
-  }, { passive: true });
+  };
+
+  const touchCancel = () => {
+    aiDetailGesture = null;
+  };
+
+  aiDetailPage.addEventListener("touchstart", touchStart, { passive: true });
+  aiDetailPage.addEventListener("touchmove", touchMove, { passive: false });
+  aiDetailPage.addEventListener("touchend", touchEnd, { passive: true });
+  aiDetailPage.addEventListener("touchcancel", touchCancel, { passive: true });
+  aiDetailEdgeHandlers = { touchStart, touchMove, touchEnd, touchCancel };
 }
 
-setupAiEdgeReturnGesture();
-
-function setupMenuEdgeReturnGuard() {
-  const isMenuTarget = (target) => Boolean(
-    target instanceof Element
-    && (
-      menuAnchor?.contains(target)
-      || menuPopup?.contains(target)
-      || menuBackdrop?.contains(target)
-    )
-  );
-
-  document.addEventListener("touchstart", (event) => {
-    if (event.touches.length !== 1 || !isMenuTarget(event.target)) {
-      menuEdgeGesture = null;
-      return;
-    }
-    const touch = event.touches[0];
-    const fromLeft = touch.clientX <= aiDetailEdgeSize;
-    const fromRight = touch.clientX >= window.innerWidth - aiDetailEdgeSize;
-    menuEdgeGesture = fromLeft || fromRight
-      ? { startX: touch.clientX, startY: touch.clientY }
-      : null;
-  }, { passive: true, capture: true });
-
-  document.addEventListener("touchmove", (event) => {
-    if (!menuEdgeGesture || event.touches.length !== 1) return;
-    const touch = event.touches[0];
-    const dx = touch.clientX - menuEdgeGesture.startX;
-    const dy = touch.clientY - menuEdgeGesture.startY;
-    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * aiDetailEdgeAxisRatio) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  }, { passive: false, capture: true });
-
-  document.addEventListener("touchend", () => {
-    menuEdgeGesture = null;
-  }, { passive: true, capture: true });
-
-  document.addEventListener("touchcancel", () => {
-    menuEdgeGesture = null;
-  }, { passive: true, capture: true });
+function disableAiEdgeReturnGesture() {
+  if (!aiDetailPage || !aiDetailEdgeHandlers) return;
+  aiDetailPage.removeEventListener("touchstart", aiDetailEdgeHandlers.touchStart);
+  aiDetailPage.removeEventListener("touchmove", aiDetailEdgeHandlers.touchMove);
+  aiDetailPage.removeEventListener("touchend", aiDetailEdgeHandlers.touchEnd);
+  aiDetailPage.removeEventListener("touchcancel", aiDetailEdgeHandlers.touchCancel);
+  aiDetailGesture = null;
+  aiDetailEdgeHandlers = null;
 }
-
-setupMenuEdgeReturnGuard();
 
 aiDetailPage?.addEventListener("click", (event) => {
   const reportButton = event.target.closest(".ai-report-open");
