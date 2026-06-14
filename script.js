@@ -396,7 +396,17 @@ function scheduleImagePreload() {
 }
 
 function chooseDefaultDate(days) {
-  return localDateKey();
+  const today = localDateKey();
+  const visibleDates = new Set(dateItems().map((item) => item.dateKey));
+  const daysWithMatches = (Array.isArray(days) ? days : [])
+    .filter((day) => visibleDates.has(day.dateKey) && Array.isArray(day.matches) && day.matches.length > 0);
+  if (daysWithMatches.some((day) => day.dateKey === today)) return today;
+  daysWithMatches.sort((a, b) => {
+    const distanceA = Math.abs(new Date(`${a.dateKey}T00:00:00+08:00`) - new Date(`${today}T00:00:00+08:00`));
+    const distanceB = Math.abs(new Date(`${b.dateKey}T00:00:00+08:00`) - new Date(`${today}T00:00:00+08:00`));
+    return distanceA - distanceB || a.dateKey.localeCompare(b.dateKey);
+  });
+  return daysWithMatches[0]?.dateKey || today;
 }
 
 function dateItems() {
