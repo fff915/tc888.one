@@ -1,0 +1,14 @@
+{
+  "name": "tc888-one",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:worker-assets": "node scripts/prepare-worker-assets.mjs",
+    "check:worker": "node --check worker/index.js",
+    "deploy": "npm run prepare:worker-assets && wrangler deploy --keep-vars",
+    "deploy:dry-run": "npm run prepare:worker-assets && wrangler deploy --dry-run --keep-vars"
+  },
+  "devDependencies": {
+    "wrangler": "4.100.0"
+  }
+}

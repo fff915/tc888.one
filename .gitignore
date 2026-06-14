@@ -2,5 +2,12 @@
 highlightly.env
 __pycache__/
 *.pyc
+data/
 data/highlightly_api.log
 data/team-logo-cache/
+.wrangler/
+.wrangler-dryrun*/
+public/
+_live_schedule_snapshot.json
+_r2_*
+每日更新/

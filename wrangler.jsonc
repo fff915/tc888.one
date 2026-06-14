@@ -1,0 +1,47 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tc888",
+  "main": "worker/index.js",
+  "compatibility_date": "2024-11-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./public",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tc888-db",
+      "database_id": "9ab6faa1-f4c9-49fc-a3d8-a00ab2d8a8bb"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "STORAGE",
+      "bucket_name": "tc888-storage"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "AI_ANALYZER",
+        "class_name": "AiAnalyzer"
+      },
+      {
+        "name": "LOGO_PRECACHER",
+        "class_name": "LogoPrecacher"
+      },
+      {
+        "name": "SCORE_POLLER",
+        "class_name": "ScorePoller"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["AiAnalyzer", "LogoPrecacher", "ScorePoller"]
+    }
+  ]
+}
