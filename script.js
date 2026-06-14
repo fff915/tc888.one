@@ -105,7 +105,7 @@ const aiText = Object.freeze({
   doubao: "\u8c46\u5305",
   overviewTitle: "AI\u5206\u6790\u603b\u89c8",
   reportTitle: "AI\u8be6\u60c5\u62a5\u544a",
-  back: "\u8fd4\u56de",
+  back: "\u6ed1\u52a8\u8fd4\u56de",
   modelListLabel: "AI\u6a21\u578b\u9884\u6d4b\u5217\u8868",
   winLoss: "\u80dc\u8d1f",
   fullScore: "\u5168\u573a\u6bd4\u5206",
@@ -3055,8 +3055,15 @@ function openAiReport(index) {
   }
 }
 
+function isAiDetailReturnView() {
+  return Boolean(
+    aiDetailPage?.classList.contains("active")
+    && (activeAiDetailView === "overview" || activeAiDetailView === "report")
+  );
+}
+
 function handleAiUnifiedBack() {
-  if (!aiDetailPage?.classList.contains("active")) return;
+  if (!isAiDetailReturnView()) return;
   if (activeAiDetailView === "report") {
     returnToAiOverview();
     return;
@@ -3065,7 +3072,7 @@ function handleAiUnifiedBack() {
 }
 
 function handleAiPopState() {
-  if (!aiDetailPage?.classList.contains("active")) return;
+  if (!isAiDetailReturnView()) return;
   if (activeAiDetailView === "report") {
     returnToAiOverview({ fromHistory: true });
     return;
@@ -3076,7 +3083,7 @@ function handleAiPopState() {
 function setupAiEdgeReturnGesture() {
   if (!aiDetailPage) return;
   aiDetailPage.addEventListener("touchstart", (event) => {
-    if (!aiDetailPage.classList.contains("active") || event.touches.length !== 1) return;
+    if (!isAiDetailReturnView() || event.touches.length !== 1) return;
     const touch = event.touches[0];
     const fromLeft = touch.clientX <= aiDetailEdgeSize;
     const fromRight = touch.clientX >= window.innerWidth - aiDetailEdgeSize;
