@@ -2572,6 +2572,15 @@ body.ai-detail-open .app-shell {
   opacity: 1;
 }
 
+.ai-model-logo-app {
+  padding: 0.2rem;
+}
+
+.ai-model-logo-app img {
+  border-radius: 27%;
+  object-fit: cover;
+}
+
 .ai-overview-body {
   min-width: 0;
 }

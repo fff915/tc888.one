@@ -867,6 +867,12 @@ const jcTeamNameAliases = Object.freeze({
   洛里昂: ["Lorient"],
   梅斯: ["Metz"],
   昂热: ["Angers"],
+  勒阿弗尔: ["Le Havre"],
+  帕德博恩: ["SC Paderborn 07", "Paderborn"],
+  波鸿: ["VfL Bochum", "Bochum"],
+  基尔: ["Holstein Kiel"],
+  荷尔斯泰因基尔: ["Holstein Kiel"],
+  蒙扎: ["Monza"],
   蔚山HD: ["Ulsan HD", "Ulsan Hyundai"],
   全北现代: ["Jeonbuk Hyundai Motors", "Jeonbuk Motors"],
   浦项制铁: ["Pohang Steelers"],
@@ -986,6 +992,7 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "afc-bournemouth",
   "alaves",
   "albirex-niigata",
+  "angers",
   "arsenal",
   "as-roma",
   "aston-villa",
@@ -995,6 +1002,7 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "atletico-madrid",
   "augsburg",
   "austin-fc",
+  "auxerre",
   "avispa-fukuoka",
   "azul-claro-numazu",
   "bayer-leverkusen",
@@ -1007,10 +1015,12 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "bologna",
   "borussia-dortmund",
   "borussia-monchengladbach",
+  "bochum",
   "bournemouth",
   "brentford",
   "brighton",
   "brighton-and-hove-albion",
+  "brest",
   "burnley",
   "cagliari",
   "celta-vigo",
@@ -1075,6 +1085,7 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "henan-fc",
   "hoffenheim",
   "hokkaido-consadole-sapporo",
+  "holstein-kiel",
   "houston-dynamo",
   "incheon-united",
   "inter-miami",
@@ -1100,12 +1111,14 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "las-palmas",
   "lazio",
   "lecce",
+  "le-havre",
   "leeds-united",
   "leicester-city",
   "lens",
   "levante",
   "lille",
   "liverpool",
+  "lorient",
   "los-angeles-fc",
   "lyon",
   "machida-zelvia",
@@ -1122,6 +1135,7 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "mito-hollyhock",
   "molde",
   "monaco",
+  "monza",
   "montedio-yamagata",
   "montpellier",
   "nagoya-grampus",
@@ -1141,6 +1155,7 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "omiya-ardija",
   "orlando-city",
   "osasuna",
+  "paderborn",
   "palmeiras",
   "paris-saint-germain",
   "parma",
@@ -1171,6 +1186,7 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "santos",
   "sao-paulo",
   "sassuolo",
+  "sc-paderborn-07",
   "sc-freiburg",
   "seattle-sounders",
   "sevilla",
@@ -1184,6 +1200,7 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "sporting-kansas-city",
   "st-louis-city",
   "st-pauli",
+  "stade-brestois",
   "strasbourg",
   "stuttgart",
   "sunderland",
@@ -1211,6 +1228,7 @@ const teamLogoLocalClubSlugs = Object.freeze(new Set([
   "vegalta-sendai",
   "ventforet-kofu",
   "vfb-stuttgart",
+  "vfl-bochum",
   "vfl-wolfsburg",
   "villarreal",
   "vissel-kobe",
@@ -2812,12 +2830,13 @@ function aiModelLogo(modelName) {
     Gemini: "/ai-logos/gemini.svg",
     DeepSeek: "/ai-logos/deepseek.svg",
   };
-  return logos[modelName] || (modelName === aiText.doubao ? "/ai-logos/doubao.svg" : "/ai-logos/ai.svg");
+  return logos[modelName] || (modelName === aiText.doubao ? "/ai-logos/doubao-avatar.png" : "/ai-logos/ai.svg");
 }
 
 function aiModelLogoHtml(modelName) {
+  const appLogoClass = modelName === aiText.doubao ? " ai-model-logo-app" : "";
   return `
-    <span class="ai-model-logo" aria-hidden="true">
+    <span class="ai-model-logo${appLogoClass}" aria-hidden="true">
       <img src="${escapeHtml(aiModelLogo(modelName))}" alt="" loading="eager" decoding="async" fetchpriority="low" />
     </span>
   `;
