@@ -396,17 +396,7 @@ function scheduleImagePreload() {
 }
 
 function chooseDefaultDate(days) {
-  const today = localDateKey();
-  const visibleDates = new Set(dateItems().map((item) => item.dateKey));
-  const daysWithMatches = (Array.isArray(days) ? days : [])
-    .filter((day) => visibleDates.has(day.dateKey) && Array.isArray(day.matches) && day.matches.length > 0);
-  if (daysWithMatches.some((day) => day.dateKey === today)) return today;
-  daysWithMatches.sort((a, b) => {
-    const distanceA = Math.abs(new Date(`${a.dateKey}T00:00:00+08:00`) - new Date(`${today}T00:00:00+08:00`));
-    const distanceB = Math.abs(new Date(`${b.dateKey}T00:00:00+08:00`) - new Date(`${today}T00:00:00+08:00`));
-    return distanceA - distanceB || a.dateKey.localeCompare(b.dateKey);
-  });
-  return daysWithMatches[0]?.dateKey || today;
+  return localDateKey();
 }
 
 function dateItems() {
@@ -3072,6 +3062,15 @@ function isAiDetailReturnView() {
   );
 }
 
+function canUseAiEdgeReturn(event) {
+  return Boolean(
+    isAiDetailReturnView()
+    && event?.target instanceof Element
+    && event.target.closest(".ai-detail-shell")
+    && aiDetailPage.contains(event.target)
+  );
+}
+
 function handleAiUnifiedBack() {
   if (!isAiDetailReturnView()) return;
   if (activeAiDetailView === "report") {
@@ -3093,7 +3092,7 @@ function handleAiPopState() {
 function setupAiEdgeReturnGesture() {
   if (!aiDetailPage) return;
   aiDetailPage.addEventListener("touchstart", (event) => {
-    if (!isAiDetailReturnView() || event.touches.length !== 1) return;
+    if (!canUseAiEdgeReturn(event) || event.touches.length !== 1) return;
     const touch = event.touches[0];
     const fromLeft = touch.clientX <= aiDetailEdgeSize;
     const fromRight = touch.clientX >= window.innerWidth - aiDetailEdgeSize;
