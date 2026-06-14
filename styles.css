@@ -991,13 +991,17 @@ button,
 
 .match-list-wrap {
   flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
   overflow: visible;
   padding: 8px 16px 0;
 }
 
 .schedule {
   position: relative;
+  flex: 1 1 auto;
   display: block;
+  min-height: 0;
   padding: 0 12px;
   touch-action: pan-y;
   overflow: visible;
