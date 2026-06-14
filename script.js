@@ -2818,7 +2818,7 @@ function aiModelLogo(modelName) {
 function aiModelLogoHtml(modelName) {
   return `
     <span class="ai-model-logo" aria-hidden="true">
-      <img src="${escapeHtml(aiModelLogo(modelName))}" alt="" loading="lazy" decoding="async" />
+      <img src="${escapeHtml(aiModelLogo(modelName))}" alt="" loading="eager" decoding="async" fetchpriority="low" />
     </span>
   `;
 }

@@ -1022,11 +1022,13 @@ button,
   right: 12px;
   width: auto;
   backface-visibility: hidden;
+  will-change: transform;
   transform: translateZ(0);
   transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .schedule.is-dragging .schedule-page.active {
+  will-change: transform;
   transform: translate3d(var(--swipe-x, 0), 0, 0);
   transition: none;
 }
@@ -1036,7 +1038,7 @@ button,
   transform-origin: center top;
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
-  will-change: transform, opacity;
+  will-change: auto;
 }
 
 .schedule-page.is-entering {
@@ -2044,6 +2046,32 @@ html {
     inset 0 0 0.52rem rgba(var(--match-card-border-rgb), var(--card-edge-inner-alpha));
 }
 
+.schedule.is-dragging .match-card,
+.schedule.is-transitioning .match-card {
+  box-shadow:
+    0 0 0 1px rgba(var(--match-card-border-rgb), 0.032),
+    0 0.42rem 0.9rem rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: none;
+}
+
+.schedule.is-dragging .match-card::before,
+.schedule.is-transitioning .match-card::before {
+  opacity: 0.42;
+  box-shadow: none;
+}
+
+.schedule.is-dragging .match-card::after,
+.schedule.is-transitioning .match-card::after {
+  opacity: 0.24;
+  box-shadow: inset -1px -1px 0 rgba(var(--ai-accent-rgb), 0.16);
+}
+
+.schedule.is-dragging .team-avatar,
+.schedule.is-transitioning .team-avatar {
+  box-shadow: none !important;
+}
+
 .match-card-top,
 .match-teams {
   position: relative;
@@ -2293,7 +2321,7 @@ body.ai-detail-open .app-shell {
 
 @keyframes aiViewEnter {
   from {
-    opacity: 0;
+    opacity: 1;
     transform: translate3d(12px, 0, 0);
   }
   to {
@@ -2304,7 +2332,7 @@ body.ai-detail-open .app-shell {
 
 @keyframes aiViewReturn {
   from {
-    opacity: 0;
+    opacity: 1;
     transform: translate3d(-12px, 0, 0);
   }
   to {
